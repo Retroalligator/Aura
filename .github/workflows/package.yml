@@ -1,0 +1,83 @@
+name: Publish GitHub release package
+on:
+  workflow_run:
+    workflows: [Build and publish release installers]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag with complete verified installers
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: aura-package-${{ github.event.workflow_run.head_branch || inputs.tag }}
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_repository.full_name == github.repository &&
+       github.event.workflow_run.event == 'release')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      # workflow_run uses the trusted default branch, not code from a triggered PR.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Download and verify the published native release
+        id: bundle
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag || github.event.workflow_run.head_branch }}
+          BUILT_REVISION: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json tagName,isDraft > release.json
+          test "$(jq -r .tagName release.json)" = "$RELEASE_TAG"
+          test "$(jq -r .isDraft release.json)" = false
+          git fetch --no-tags origin "refs/tags/$RELEASE_TAG"
+          revision="$(git rev-parse 'FETCH_HEAD^{commit}')"
+          [[ "$revision" =~ ^[0-9a-f]{40}$ ]]
+          if [[ -n "$BUILT_REVISION" ]]; then test "$revision" = "$BUILT_REVISION"; fi
+          mkdir -p bundle/payloads
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir bundle/payloads
+          python3 Packaging/registry/verify_release.py --tag "$RELEASE_TAG" --revision "$revision" --payloads bundle/payloads
+          cp Packaging/registry/Dockerfile bundle/Dockerfile
+          echo "version=${RELEASE_TAG#v}" >> "$GITHUB_OUTPUT"
+          echo "revision=$revision" >> "$GITHUB_OUTPUT"
+          echo "image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/aura" >> "$GITHUB_OUTPUT"
+      - name: Publish the native release archive to GitHub Packages
+        env:
+          REGISTRY_TOKEN: ${{ github.token }}
+          REGISTRY_USER: ${{ github.actor }}
+          IMAGE: ${{ steps.bundle.outputs.image }}
+          VERSION: ${{ steps.bundle.outputs.version }}
+          REVISION: ${{ steps.bundle.outputs.revision }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io --username "$REGISTRY_USER" --password-stdin
+          trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
+          docker build --build-arg "AURA_VERSION=$VERSION" --build-arg "AURA_REVISION=$REVISION" --tag "$IMAGE:$VERSION" bundle
+          docker push "$IMAGE:$VERSION"
+          docker image inspect "$IMAGE:$VERSION" --format '{{json .RepoDigests}}' > registry-digests.json
+          {
+            echo "Published **Aura $VERSION** to GitHub Packages: \`$IMAGE:$VERSION\`."
+            echo
+            echo "The image contains native installers and source in \`/aura\`; extract it rather than run it."
+            echo
+            cat registry-digests.json
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Aura-package-manifest
+          path: |
+            registry-digests.json
+            bundle/payloads/release-manifest.json

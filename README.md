@@ -52,6 +52,14 @@ This is a development pre-release. macOS payloads are ad-hoc signed and not
 notarized; Windows executables are unsigned. See [validation](VALIDATION.md)
 for actual checks and timing limits.
 
+## GitHub Packages
+
+The verified release bundle is also published as
+`ghcr.io/retroalligator/aura:2.0.0` in GitHub Packages. It contains the native
+installers, complete source and checksums under `/aura`. See
+[package extraction instructions](Packaging/registry/README.md).
+Use the DMG or Setup EXE from Releases for normal installation.
+
 ## Mid/Side and Delta
 
 Stereo processes left and right independently. The other modes encode
