@@ -1,0 +1,357 @@
+
+    AU Validation Tool
+    Version: 1.10.0
+    Copyright 2003-2019, Apple Inc. All Rights Reserved.
+    Specify -h (-help) for command options
+
+--------------------------------------------------
+VALIDATING AUDIO UNIT: 'aufx' - 'Aura' - 'AS01'
+--------------------------------------------------
+Manufacturer String: AudioStudio
+AudioUnit Name: Aura
+Component Version: 1.5.0 (0x10500)
+
+* * PASS
+--------------------------------------------------
+TESTING OPEN TIMES:
+COLD:
+Time to open AudioUnit:         1527.981 ms
+WARM:
+Time to open AudioUnit:         161.674  ms
+This AudioUnit is a version 2 implementation.
+FIRST TIME:
+Time for initialization:        0.246 ms
+
+* * PASS
+--------------------------------------------------
+VERIFYING DEFAULT SCOPE FORMATS:
+Input Scope Bus Configuration:
+ Default Bus Count:1
+    Bus Name: Input
+    Default Format: AudioStreamBasicDescription:  2 ch,  44100 Hz, Float32, deinterleaved
+    Has Channel Layouts: 0x640001 0x650002 0x660002 0x670002 0x6A0002
+    Default Layout:
+	Tag=0x650002, Num Chan Descs=0
+
+Output Scope Bus Configuration:
+ Default Bus Count:1
+    Bus Name: Output
+    Default Format: AudioStreamBasicDescription:  2 ch,  44100 Hz, Float32, deinterleaved
+    Has Channel Layouts: 0x640001 0x650002 0x660002 0x670002 0x6A0002
+    Default Layout:
+	Tag=0x650002, Num Chan Descs=0
+
+* * PASS
+--------------------------------------------------
+VERIFYING REQUIRED PROPERTIES:
+
+* * PASS
+--------------------------------------------------
+VERIFYING RECOMMENDED PROPERTIES:
+  VERIFYING PROPERTY: Latency
+    PASS
+  VERIFYING PROPERTY: Tail Time
+    PASS
+  VERIFYING PROPERTY: Bypass Effect
+    PASS
+
+* * PASS
+--------------------------------------------------
+VERIFYING OPTIONAL PROPERTIES:
+
+* * PASS
+--------------------------------------------------
+VERIFYING SPECIAL PROPERTIES:
+
+VERIFYING CUSTOM UI
+Cocoa Views Available: 1
+  JUCE_AUCocoaViewClass_35c0dc391663cd13
+    PASS
+
+HAS FACTORY PRESETS
+    ID:   0    Name: Default
+    ID:   1    Name: Vocal Magic
+    ID:   2    Name: 808 Tuner
+    ID:   3    Name: Lush Pad Sweetener
+    ID:   4    Name: Drum Transient Preserver
+
+VERIFYING CLASS INFO
+    PASS
+
+TESTING HOST CALLBACKS
+    PASS
+
+* * PASS
+--------------------------------------------------
+PUBLISHED PARAMETER INFO:
+
+# # # 20 Global Scope Parameters:
+Parameter ID:108124
+Name: Mix
+Parameter Type: Generic
+Values: Minimum = 0, Default = 100, Maximum = 100
+Flags: Values Have Strings, High Resolution, Can Ramp, Readable, Writable
+  -parameter PASS
+
+Parameter ID:269353485
+Name: Scale
+Parameter Type: Indexed
+Values: Minimum = Major, Default = Major, Maximum = Custom
+Flags: Values Have Strings, High Resolution, Readable, Writable
+Parameter has Value Strings
+Num Strings = 8
+Value: 0,  String: Major
+Value: 1,  String: Natural Minor
+Value: 2,  String: Harmonic Minor
+Value: 3,  String: Dorian
+Value: 4,  String: Lydian
+Value: 5,  String: Pentatonic
+Value: 6,  String: Chromatic
+Value: 7,  String: Custom
+  -parameter PASS
+
+Parameter ID:619867194
+Name: High frequency
+Parameter Type: Generic
+Values: Minimum = 20.0000000, Default = 11999.9990234, Maximum = 20000.0000000
+Flags: Values Have Strings, High Resolution, Can Ramp, Readable, Writable
+  -parameter PASS
+
+Parameter ID:733630552
+Name: Amount
+Parameter Type: Generic
+Values: Minimum = 0, Default = 50, Maximum = 100
+Flags: Values Have Strings, High Resolution, Can Ramp, Readable, Writable
+  -parameter PASS
+
+Parameter ID:908127913
+Name: Custom notes
+Parameter Type: Generic
+Values: Minimum = 0, Default = 2741, Maximum = 4095
+Flags: Values Have Strings, High Resolution, Can Ramp, Readable, Writable
+  -parameter PASS
+
+Parameter ID:1544020412
+Name: Low frequency
+Parameter Type: Generic
+Values: Minimum = 20.0000000, Default = 79.9999847, Maximum = 20000.0000000
+Flags: Values Have Strings, High Resolution, Can Ramp, Readable, Writable
+  -parameter PASS
+
+Parameter ID:42845711
+Name: Throat
+Parameter Type: Generic
+Values: Minimum = 0, Default = 100, Maximum = 100
+Flags: Values Have Strings, High Resolution, Can Ramp, Readable, Writable
+  -parameter PASS
+
+Parameter ID:44272374
+Name: Punch
+Parameter Type: Generic
+Values: Minimum = 0, Default = 100, Maximum = 100
+Flags: Values Have Strings, High Resolution, Can Ramp, Readable, Writable
+  -parameter PASS
+
+Parameter ID:117194247
+Name: Solo processed signal
+Parameter Type: Boolean
+Values: Minimum = Off, Default = Off, Maximum = On
+Flags: Values Have Strings, High Resolution, Readable, Writable
+  -parameter PASS
+
+Parameter ID:546794514
+Name: Bypass transient preservation
+Parameter Type: Boolean
+Values: Minimum = Off, Default = Off, Maximum = On
+Flags: Values Have Strings, High Resolution, Readable, Writable
+  -parameter PASS
+
+Parameter ID:555133999
+Name: Formant tension
+Parameter Type: Generic
+Values: Minimum = 0, Default = 50, Maximum = 100
+Flags: Values Have Strings, High Resolution, Can Ramp, Readable, Writable
+  -parameter PASS
+
+Parameter ID:873230368
+Name: Output gain
+Parameter Type: Generic
+Values: Minimum = -24.0, Default = 0.0, Maximum = 12.0
+Flags: Values Have Strings, High Resolution, Can Ramp, Readable, Writable
+  -parameter PASS
+
+Parameter ID:873428666
+Name: Mute output
+Parameter Type: Boolean
+Values: Minimum = Off, Default = Off, Maximum = On
+Flags: Values Have Strings, High Resolution, Readable, Writable
+  -parameter PASS
+
+Parameter ID:1005573739
+Name: Bypass Aura
+Parameter Type: Boolean
+Values: Minimum = Off, Default = Off, Maximum = On
+Flags: Values Have Strings, High Resolution, Readable, Writable
+  -parameter PASS
+
+Parameter ID:1807557535
+Name: Throat shape
+Parameter Type: Generic
+Values: Minimum = -12.0, Default = 0.0, Maximum = 12.0
+Flags: Values Have Strings, High Resolution, Can Ramp, Readable, Writable
+  -parameter PASS
+
+Parameter ID:1913981571
+Name: Tonic
+Parameter Type: Indexed
+Values: Minimum = C, Default = C, Maximum = B
+Flags: Values Have Strings, High Resolution, Readable, Writable
+Parameter has Value Strings
+Num Strings = 12
+Value: 0,  String: C
+Value: 1,  String: C#
+Value: 2,  String: D
+Value: 3,  String: D#
+Value: 4,  String: E
+Value: 5,  String: F
+Value: 6,  String: F#
+Value: 7,  String: G
+Value: 8,  String: G#
+Value: 9,  String: A
+Value: 10,  String: A#
+Value: 11,  String: B
+  -parameter PASS
+
+Parameter ID:2035812789
+Name: Transient sensitivity
+Parameter Type: Generic
+Values: Minimum = 0, Default = 50, Maximum = 100
+Flags: Values Have Strings, High Resolution, Can Ramp, Readable, Writable
+  -parameter PASS
+
+Parameter ID:1420097723
+Name: x4 oversampling
+Parameter Type: Boolean
+Values: Minimum = Off, Default = Off, Maximum = On
+Flags: Values Have Strings, High Resolution, Readable, Writable
+  -parameter PASS
+
+Parameter ID:332976382
+Name: Oversampling
+Parameter Type: Indexed
+Values: Minimum = 1x, Default = 1x, Maximum = 4x
+Flags: Values Have Strings, High Resolution, Readable, Writable
+Parameter has Value Strings
+Num Strings = 3
+Value: 0,  String: 1x
+Value: 1,  String: 2x
+Value: 2,  String: 4x
+  -parameter PASS
+
+Parameter ID:982687340
+Name: Resampling quality
+Parameter Type: Indexed
+Values: Minimum = Standard, Default = High, Maximum = High
+Flags: Values Have Strings, High Resolution, Readable, Writable
+Parameter has Value Strings
+Num Strings = 2
+Value: 0,  String: Standard
+Value: 1,  String: High
+  -parameter PASS
+
+Testing that parameters retain value across reset and initialization
+  PASS
+
+* * PASS
+--------------------------------------------------
+FORMAT TESTS:
+
+Reported Channel Capabilities (explicit):
+      [1, 1]  [2, 2]
+
+Input/Output Channel Handling:
+1-1   1-2   1-4   1-5   1-6   1-7   1-8   2-2   2-4   2-5   2-6   2-7   2-8   4-4   4-5   5-5   6-6   7-7   8-8
+X                                         X
+
+# # AudioChannelLayouts (5), Input Scope:
+ChannelLayout is Writable: T
+The Unit publishes the following Channel Layouts:
+  0x640001, 0x650002, 0x660002, 0x670002, 0x6A0002,
+
+Is Audio Channel Layout Available:
+Mono    Stereo  Binau.  AU_4    Ambi.   AU_5    AU_5_0  AU_6    AU_6_0  AU_7_0  AU_7_0F AU_8    AU_5_1  AU_6_1  AU_7_1  AU_7_1F
+X       X       X
+
+Current Format:AudioStreamBasicDescription:  2 ch,  44100 Hz, Float32, deinterleaved
+Current Format Tag = 0x650002, New Format Tag = 0x640001, Success - did not reset format with mis-matched layout
+
+Current Format:AudioStreamBasicDescription:  2 ch,  44100 Hz, Float32, deinterleaved
+Current Format Tag = 0x650002, New Format Tag = 0x650002, Successsful
+
+Current Format:AudioStreamBasicDescription:  2 ch,  44100 Hz, Float32, deinterleaved
+Current Format Tag = 0x650002, New Format Tag = 0x6A0002, Successsful
+
+# # AudioChannelLayouts (5), Output Scope:
+ChannelLayout is Writable: T
+The Unit publishes the following Channel Layouts:
+  0x640001, 0x650002, 0x660002, 0x670002, 0x6A0002,
+
+Is Audio Channel Layout Available:
+Mono    Stereo  Binau.  AU_4    Ambi.   AU_5    AU_5_0  AU_6    AU_6_0  AU_7_0  AU_7_0F AU_8    AU_5_1  AU_6_1  AU_7_1  AU_7_1F
+X       X       X
+
+Current Format:AudioStreamBasicDescription:  2 ch,  44100 Hz, Float32, deinterleaved
+Current Format Tag = 0x650002, New Format Tag = 0x640001, Success - did not reset format with mis-matched layout
+
+Current Format:AudioStreamBasicDescription:  2 ch,  44100 Hz, Float32, deinterleaved
+Current Format Tag = 0x650002, New Format Tag = 0x650002, Successsful
+
+Current Format:AudioStreamBasicDescription:  2 ch,  44100 Hz, Float32, deinterleaved
+Current Format Tag = 0x650002, New Format Tag = 0x6A0002, Successsful
+
+* * PASS
+--------------------------------------------------
+RENDER TESTS:
+
+Input Format: AudioStreamBasicDescription:  2 ch,  44100 Hz, Float32, deinterleaved
+Output Format: AudioStreamBasicDescription:  2 ch,  44100 Hz, Float32, deinterleaved
+Render Test at 512 frames
+Slicing Render Test at 64 frames
+  PASS
+
+
+Render Test at 64 frames, sample rate: 22050 Hz
+Render Test at 137 frames, sample rate: 96000 Hz
+Render Test at 4096 frames, sample rate: 48000 Hz
+Render Test at 4096 frames, sample rate: 192000 Hz
+Render Test at 4096 frames, sample rate: 11025 Hz
+Render Test at 512 frames, sample rate: 44100 Hz
+  PASS
+
+1 Channel Test:
+Render Test at 512 frames
+  PASS
+
+Checking connection semantics:
+Connection format:
+AudioStreamBasicDescription:  2 ch,  44100 Hz, Float32, deinterleaved
+  PASS
+
+Bad Max Frames - Render should fail
+  PASS
+
+Checking parameter setting
+Using AudioUnitSetParameter
+Using AudioUnitScheduleParameter
+  PASS
+
+Checking ramped parameter scheduling
+  PASS
+
+Test MIDI
+  PASS
+
+* * PASS
+--------------------------------------------------
+AU VALIDATION SUCCEEDED.
+--------------------------------------------------

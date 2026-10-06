@@ -1,0 +1,35 @@
+[  1%] Building VST3 manifest helper for Aura
+-- Configuring done (0.1s)
+-- Generating done (0.0s)
+-- Build files have been written to: <workspace>/work/aura-build/vst3_helpers/Aura
+make[3]: warning: jobserver unavailable: using -j1.  Add `+' to parent make rule.
+[100%] Built target vst3_helper
+[  1%] Built target Aura_vst3_helper
+[  1%] Building CXX object CMakeFiles/Aura.dir/Source/SpectralProcessor.cpp.o
+[  2%] Building CXX object CMakeFiles/Aura.dir/Source/PluginProcessor.cpp.o
+[  3%] Building CXX object CMakeFiles/Aura.dir/Source/PluginEditor.cpp.o
+[  4%] Building CXX object CMakeFiles/AuraTests.dir/Tests/TestMain.cpp.o
+[  4%] Building CXX object CMakeFiles/AuraTests.dir/Source/SpectralProcessor.cpp.o
+[  5%] Building CXX object CMakeFiles/AuraTests.dir/Source/PluginProcessor.cpp.o
+[  6%] Building CXX object CMakeFiles/Aura.dir/Source/SpectralVisualizer.cpp.o
+[  7%] Building CXX object CMakeFiles/Aura.dir/Source/KeyboardSelector.cpp.o
+[  8%] Building CXX object CMakeFiles/AuraTests.dir/Source/PluginEditor.cpp.o
+[  9%] Building CXX object CMakeFiles/AuraTests.dir/Source/SpectralVisualizer.cpp.o
+[ 10%] Building CXX object CMakeFiles/AuraTests.dir/Source/KeyboardSelector.cpp.o
+[ 10%] Linking CXX static library Aura_artefacts/Release/libAura_SharedCode.a
+/Library/Developer/CommandLineTools/usr/bin/ranlib: for architecture: x86_64 file: Aura_artefacts/Release/libAura_SharedCode.a(juce_audio_processors_headless_ara.cpp.o) has no symbols
+/Library/Developer/CommandLineTools/usr/bin/ranlib: for architecture: x86_64 file: Aura_artefacts/Release/libAura_SharedCode.a(juce_audio_processors_headless_lv2_libs.cpp.o) has no symbols
+[ 31%] Built target Aura
+[ 32%] Linking CXX CFBundle shared module Aura_artefacts/Release/AU/Aura.component/Contents/MacOS/Aura
+[ 33%] Linking CXX CFBundle shared module Aura_artefacts/Release/VST3/Aura.vst3/Contents/MacOS/Aura
+[ 44%] Built target Aura_AU
+<workspace>/work/aura-build/Aura_artefacts/Release/VST3/Aura.vst3: code object is not signed at all
+-- Replacing invalid signature with ad-hoc signature
+<workspace>/work/aura-build/Aura_artefacts/Release/VST3/Aura.vst3: replacing existing signature
+removing moduleinfo.json
+creating <workspace>/work/aura-build/Aura_artefacts/Release/VST3/Aura.vst3/Contents/Resources/moduleinfo.json
+[ 55%] Built target Aura_VST3
+[ 56%] Linking CXX executable "AuraPreview_artefacts/Release/Aura Preview.app/Contents/MacOS/Aura Preview"
+[ 79%] Built target AuraPreview
+[ 79%] Linking CXX executable AuraTests_artefacts/Release/AuraTests
+[100%] Built target AuraTests

@@ -1,0 +1,47 @@
+Start testing: Oct 06 11:04 EDT
+----------------------------------------------------------
+1/1 Testing: AuraRegression
+1/1 Test: AuraRegression
+Command: "<workspace>/work/aura-build/AuraTests_artefacts/Release/AuraTests"
+Directory: <workspace>/work/aura-build
+"AuraRegression" start time: Oct 06 11:04 EDT
+Output:
+----------------------------------------------------------
+PASS scale masks
+PASS A440 target mapping
+PASS empty mask maps to identity
+Identity 44100 Hz max error 1.78814e-07
+PASS Hann OLA reconstructs delayed input
+Identity 48000 Hz max error 1.78814e-07
+PASS Hann OLA reconstructs delayed input
+Identity 96000 Hz max error 1.78814e-07
+PASS Hann OLA reconstructs delayed input
+Identity 192000 Hz max error 1.78814e-07
+PASS Hann OLA reconstructs delayed input
+PASS impulse latency is exactly 2048 samples
+Snapped 430 Hz -> 439.999 Hz, RMS 0.256735
+PASS sine snaps toward enabled A with usable gain
+PASS half amount interpolates pitch logarithmically
+Out-of-range max error 6.85453e-07
+PASS out-of-range fundamental is preserved
+PASS crossed boundaries produce the same ordered range
+PASS empty custom scale preserves audio
+PASS processor reports fixed latency
+PASS stereo channel isolation and aligned dry
+PASS mix zero delivers exact delayed dry
+PASS APVTS state round trip
+PASS invalid state leaves parameters intact
+PASS FIFO overflow drops new frames and drains safely
+PASS no C++ heap allocations in steady-state processBlock/bypass
+Stereo processing: 0.527594 seconds for 12 seconds of audio
+PASS automation/bypass output remains finite
+0 failures
+<end of output>
+Test time =   1.08 sec
+----------------------------------------------------------
+Test Passed.
+"AuraRegression" end time: Oct 06 11:04 EDT
+"AuraRegression" time elapsed: 00:00:01
+----------------------------------------------------------
+
+End testing: Oct 06 11:04 EDT

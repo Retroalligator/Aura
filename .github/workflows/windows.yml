@@ -1,0 +1,43 @@
+name: Windows build and installer
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'Source/**'
+      - 'Tests/**'
+      - 'CMakeLists.txt'
+      - 'build_windows.ps1'
+      - 'Packaging/windows/**'
+      - '.github/workflows/windows.yml'
+  pull_request:
+    paths:
+      - 'Source/**'
+      - 'Tests/**'
+      - 'CMakeLists.txt'
+      - 'build_windows.ps1'
+      - 'Packaging/windows/**'
+      - '.github/workflows/windows.yml'
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Build, test and package
+        shell: pwsh
+        run: ./build_windows.ps1 -BuildDir "$PWD/build-windows" -DistDir "$PWD/dist"
+      - name: Install and uninstall smoke test
+        shell: pwsh
+        run: ./Packaging/windows/test_install.ps1 -BuildDir "$PWD/build-windows" -DistDir "$PWD/dist"
+      - name: Preserve release files and evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Aura-Windows-x64
+          if-no-files-found: warn
+          path: |
+            dist/*
+            build-windows/Testing/Temporary/LastTest.log

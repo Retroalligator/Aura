@@ -1,0 +1,5 @@
+Prepared AU 44100 Hz: 0.372902 seconds, 16445 samples
+Prepared AU 48000 Hz: 0.342604 seconds, 16445 samples
+Prepared AU 96000 Hz: 0.171302 seconds, 16445 samples
+Prepared AU 192000 Hz: 0.085651 seconds, 16445 samples
+PASS prepared AU latency is exactly16445 samples at all four rates

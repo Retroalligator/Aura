@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="460" viewBox="0 0 760 460">
+ <rect width="760" height="460" fill="#101418"/>
+ <text x="42" y="64" fill="#eaf1f3" font-family="Helvetica,Arial" font-size="36" font-weight="bold">aura</text>
+ <text x="42" y="98" fill="#83f1c5" font-family="Helvetica,Arial" font-size="14" letter-spacing="2">SPECTRAL HARMONY</text>
+ <path d="M42 126H718" stroke="#2d3942"/>
+ <text x="42" y="165" fill="#eaf1f3" font-family="Helvetica,Arial" font-size="20">Drag each plug-in to its matching folder.</text>
+ <text x="42" y="207" fill="#83f1c5" font-family="Helvetica,Arial" font-size="18">Aura.vst3 → Install VST3 Here</text>
+ <text x="42" y="246" fill="#aaa2ff" font-family="Helvetica,Arial" font-size="18">Aura.component → Install AU Here</text>
+ <text x="42" y="314" fill="#82949f" font-family="Helvetica,Arial" font-size="14">Logic Pro uses AU. FL Studio supports VST3 and AU.</text>
+ <text x="42" y="345" fill="#82949f" font-family="Helvetica,Arial" font-size="14">Restart your DAW and rescan plug-ins after installation.</text>
+ <text x="42" y="410" fill="#82949f" font-family="Helvetica,Arial" font-size="12">Universal 2 · macOS 11+ · AudioStudio</text>
+</svg>

@@ -1,0 +1,4 @@
+Aura.component: final-image version1.4.0, both architecture slices, strict deep signature verified
+Aura.vst3: final-image version1.4.0, both architecture slices, strict deep signature verified
+Installed final-image AU1.4.0 at <home>/Library/Audio/Plug-Ins/Components/Aura.component; previous AU1.3.0 moved intact to <workspace>/work/aura-installed-v1.3/Aura.component
+Existing installed VST3 remains 1.2.0; no FL Studio interaction

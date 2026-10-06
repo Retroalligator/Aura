@@ -1,0 +1,77 @@
+PASS scale masks
+PASS A440 target mapping
+PASS empty mask maps to identity
+PASS HPSS classifies a broadband time-local hit
+PASS HPSS classifies a persistent narrow harmonic
+PASS HPSS soft-mask tie and silence are finite
+Cepstral full/half log-envelope error 7.15256e-07 / 7.15256e-07
+PASS cepstral lifter restores the original envelope and scales intensity
+Protected transients 44100 Hz max error 5.96046e-08
+PASS PUNCH 100 reconstructs isolated transients without phase-vocoder smearing
+PASS PUNCH crossfades the sweetened percussion and original-phase bypass
+Protected transients 48000 Hz max error 5.96046e-08
+PASS PUNCH 100 reconstructs isolated transients without phase-vocoder smearing
+PASS PUNCH crossfades the sweetened percussion and original-phase bypass
+Protected transients 96000 Hz max error 5.96046e-08
+PASS PUNCH 100 reconstructs isolated transients without phase-vocoder smearing
+PASS PUNCH crossfades the sweetened percussion and original-phase bypass
+Protected transients 192000 Hz max error 5.96046e-08
+PASS PUNCH 100 reconstructs isolated transients without phase-vocoder smearing
+PASS PUNCH crossfades the sweetened percussion and original-phase bypass
+PASS THROAT zero reports no envelope correction
+Synthetic vowel log-envelope RMS error 0.371236 -> 0.342
+PASS THROAT reduces envelope displacement in the complete HPSS/snapping pipeline
+Unsplit vowel log-envelope RMS error 0.392769 -> 0.0944115
+PASS THROAT preserves the envelope when PUNCH is zero
+PASS FIFO carries a finite positive input formant envelope
+PASS FIFO transient events and PUNCH energy track preserved hits
+PASS PUNCH zero disables bypass telemetry and transient flashes
+Identity 44100 Hz max error 1.49012e-07
+PASS Hann OLA reconstructs delayed input
+Identity 48000 Hz max error 1.49012e-07
+PASS Hann OLA reconstructs delayed input
+Identity 96000 Hz max error 1.49012e-07
+PASS Hann OLA reconstructs delayed input
+Identity 192000 Hz max error 1.49012e-07
+PASS Hann OLA reconstructs delayed input
+PASS impulse latency is exactly 4096 samples
+Snapped 430 Hz -> 439.999 Hz, RMS 0.256735
+PASS sine snaps toward enabled A with usable gain
+Default preservation tone 439.999 Hz, RMS 0.287683
+PASS harmonic snapping remains active with both preservation controls at 100
+PASS half amount interpolates pitch logarithmically
+Out-of-range max error 6.85453e-07
+PASS out-of-range fundamental is preserved
+PASS crossed boundaries produce the same ordered range
+PASS empty custom scale preserves audio
+PASS processor reports fixed latency
+PASS stereo channel isolation and aligned dry
+PASS mix zero delivers exact delayed dry
+PASS wet/dry latency stays aligned across sample rates and non-hop block sizes
+PASS wet/dry latency stays aligned across sample rates and non-hop block sizes
+PASS wet/dry latency stays aligned across sample rates and non-hop block sizes
+PASS wet/dry latency stays aligned across sample rates and non-hop block sizes
+PASS wet/dry latency stays aligned across sample rates and non-hop block sizes
+PASS wet/dry latency stays aligned across sample rates and non-hop block sizes
+PASS wet/dry latency stays aligned across sample rates and non-hop block sizes
+PASS wet/dry latency stays aligned across sample rates and non-hop block sizes
+PASS wet/dry latency stays aligned across sample rates and non-hop block sizes
+PASS wet/dry latency stays aligned across sample rates and non-hop block sizes
+PASS wet/dry latency stays aligned across sample rates and non-hop block sizes
+PASS wet/dry latency stays aligned across sample rates and non-hop block sizes
+PASS wet/dry latency stays aligned across sample rates and non-hop block sizes
+PASS wet/dry latency stays aligned across sample rates and non-hop block sizes
+PASS wet/dry latency stays aligned across sample rates and non-hop block sizes
+PASS wet/dry latency stays aligned across sample rates and non-hop block sizes
+PASS silence and non-finite input do not produce audio or cepstral noise
+PASS PUNCH automation settles to a fully protected endpoint
+PASS APVTS state round trip
+PASS v1.2 preservation state round trip
+PASS v1.0 state supplies v1.2 defaults
+PASS invalid state leaves parameters intact
+PASS FIFO overflow drops new frames and drains safely
+PASS FIFO drains latest curve while retaining brief preservation events
+PASS no C++ heap allocations from first processBlock through bypass
+Stereo processing: 0.847782 seconds for 12 seconds of audio
+PASS automation/bypass output remains finite
+0 failures

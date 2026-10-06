@@ -1,0 +1,14 @@
+[  1%] Building VST3 manifest helper for Aura
+-- Configuring done (0.1s)
+-- Generating done (0.0s)
+-- Build files have been written to: <workspace>/work/aura-build/vst3_helpers/Aura
+make[3]: warning: jobserver unavailable: using -j1.  Add `+' to parent make rule.
+[100%] Built target vst3_helper
+[  1%] Built target Aura_vst3_helper
+[  2%] Building CXX object CMakeFiles/AuraTests.dir/Tests/TestMain.cpp.o
+[ 27%] Built target Aura
+[ 43%] Built target Aura_VST3
+[ 51%] Built target Aura_AU
+[ 75%] Built target AuraPreview
+[ 75%] Linking CXX executable AuraTests_artefacts/Release/AuraTests
+[100%] Built target AuraTests

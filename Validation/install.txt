@@ -1,0 +1,6 @@
+     0 valid identities found
+Final image Aura.component version 1.5.0 strict signature and Universal 2 passed
+Final image Aura.vst3 version 1.5.0 strict signature and Universal 2 passed
+Preserved prior AU at <workspace>/work/aura-installed-v1.4/Aura.component
+Installed AU 1.5.0 matches final-image binary: <home>/Library/Audio/Plug-Ins/Components/Aura.component
+Existing installed VST3 unchanged: 1.2.0

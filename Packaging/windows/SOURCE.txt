@@ -1,0 +1,6 @@
+Aura is free software under GNU AGPL version 3. See LICENSE and THIRD_PARTY_NOTICES.md.
+Source, build scripts and exact JUCE dependency source:
+https://github.com/Retroalligator/Aura/releases/tag/v1.5.0
+The complete-source archive contains vendor/JUCE; CMake selects it automatically.
+The source is also available at https://github.com/Retroalligator/Aura
+This development installer is unsigned. Windows DAW/device listening is not certified.

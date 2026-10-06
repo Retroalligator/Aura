@@ -1,0 +1,15 @@
+Aura1.4 native silent preview observations, October6,2026
+CUA selected app by bundle identifier com.audiostudio.aura.preview.
+Native interaction: Root Key D -> F, Scale Type Major retained.
+Keyboard transposed to F Major: C,D,E,F,G,A,A# on; C#,D#,F#,G#,B off.
+Factory manager changed from Lush Pad Sweetener to Lush Pad Sweetener *.
+Native factory recall: Vocal Magic, no modified asterisk.
+Root A, Natural Minor, Amount74%, Transient preserve90%, Formant preserve100%,
+Low80Hz, High14.5kHz, Throat0st, Tension60%, Sensitivity55%, Gain-1.5dB, x4on.
+Final1180x810 preview: rainbow curves/particles, envelope, steel pods,
+side-by-sideRoot/Scale, lowerPOST analyzer, output/meter panels visible.
+Footer48.0kHz/FLOAT32/8192FFT/16445samples observed.
+Settings popup: opened; keyboardDown/Return attempted; auxiliary popup state
+was not exposed reliably. Reduced-motion selection was not confirmed.
+Minimum1000x740 checked only through layout geometry; no screenshot at thatsize.
+Preview is silent synthetic audio, not DAW playback or a display FPS benchmark.

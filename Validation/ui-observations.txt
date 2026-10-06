@@ -1,0 +1,15 @@
+Aura 1.5 native silent preview observations, October 6, 2026
+CUA selected app by bundle identifier com.audiostudio.aura.preview.
+1180x810 OpenGL preview: gear and factor button each open Processing Settings.
+1x: High quality retained but disabled, explanation says applies at 2x/4x.
+2x High, 2x Standard, 4x Standard, 4x High selected through writable native choices.
+Panel/header factors reflect requested modes; Ready | 2x and Ready | 4x observed
+following actual synthetic audio processing. Footer latency remains 16445 samples.
+Reduced motion toggled On: particle trails/transient flash removed; curves/meters retained.
+Reset to Default restores Major C, Amount50%,1x High, gain0 and no modified asterisk.
+Done closes panel. Vocal Magic recalls A Natural Minor, Amount74%,P90%,F100%,
+80Hz..14.5kHz,gain-1.5dB,4x High,no modified asterisk.
+Amount0% and100% screenshots: pale muted vs vivid violet/magenta/gold/green wave.
+New panel text initially displayed incorrect UTF8 separators; final ASCII text verified.
+Minimum1000x740 reviewed only through layout geometry, not a screenshot.
+Silent synthetic audio, not DAW playback/listening or a measured60FPS benchmark.
