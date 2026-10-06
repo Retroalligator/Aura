@@ -1,4 +1,11 @@
+Warning: truncated output (original token count: 5178)
+Total output lines: 343
+
 # Aura 1.5
+
+![Aura interface](docs/Aura-interface.png)
+
+*Native macOS editor shown with the silent synthetic test signal.*
 
 [Download installers and complete source](https://github.com/Retroalligator/Aura/releases/tag/v1.5.0)
 
@@ -178,18 +185,7 @@ flowchart LR
 ```
 
 PUNCH 0 sends the complete spectrum through sweetening. PUNCH 1 routes the
-entire estimated percussive component around both phase synthesis and formant
-correction. Intermediate values split that component linearly. The original
-complex percussion bins are added after envelope correction and before the shared
-IFFT/overlap-add. Because both branches use the same window and delay, this linear
-sum is equivalent to summing separately synthesized branches at the output.
-
-A fast/slow amplitude detector supplements the median masks: its fast envelope
-uses a 0.5 ms attack and 5 ms release, while the slow envelope uses 30 ms.
-Detected onsets boost percussive classification only for broad spectral energy;
-SENSITIVITY also biases the median classification. HPSS is an estimate:
-isolated broadband impulses reconstruct without smearing, but overlapping drums,
-pitched attacks, and sustained noise can share both masks. PUNCH 100 does not
+entire estimated percussive component around both phase synthesis and forma…178 tokens truncated…hed attacks, and sustained noise can share both masks. PUNCH 100 does not
 guarantee that every sample of an arbitrary drum recording is classified as
 percussive. The finite STFT/lookahead tail is reported to the host.
 
