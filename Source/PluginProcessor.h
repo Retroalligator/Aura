@@ -37,6 +37,8 @@ public:
     bool isRealTimeMode() const noexcept { return realTimeMode->load(std::memory_order_relaxed) > 0.5f; }
     bool isActiveRealTimeMode() const noexcept { return getActiveProcessingPath() >= 5; }
     int getAnalysisFftSize() const noexcept { return isActiveRealTimeMode() ? 4096 : 8192; }
+    bool isSpatialChangePending() const noexcept { return spatialTransition.load(std::memory_order_relaxed); }
+    bool isActiveMidSide() const noexcept { return activeMidSide.load(std::memory_order_relaxed); }
     bool isProcessingChangePending() const noexcept { const auto mode = getOversamplingMode(); return processingTransition.load(std::memory_order_relaxed) || getActiveProcessingPath() != ((isRealTimeMode() ? 5 : 0) + (mode == 0 ? 0 : 1 + (mode - 1) * 2 + getProcessingQuality())); }
     void setOversamplingMode(int);
     void getStateInformation(juce::MemoryBlock&) override;
@@ -53,7 +55,7 @@ private:
     void parameterGestureChanged(int, bool) override {}
     struct ProcessingState;
     std::unique_ptr<ProcessingState> processing;
-    juce::SmoothedValue<float> mixSmooth, gainSmooth;
+    juce::SmoothedValue<float> mixSmooth, gainSmooth, midSmooth, sideSmooth, deltaSmooth;
     std::array<juce::RangedAudioParameter*, aura::parameterIds.size()> programParameters {};
     std::array<std::atomic<float>*, aura::parameterIds.size()> programValues {};
     std::atomic<int> currentProgram { 0 };
@@ -76,10 +78,14 @@ private:
     std::atomic<float>* globalBypass = nullptr;
     std::atomic<float>* quality = nullptr;
     std::atomic<float>* realTimeMode = nullptr;
+    std::atomic<float>* channelMode = nullptr;
+    std::atomic<float>* midAmount = nullptr;
+    std::atomic<float>* sideAmount = nullptr;
+    std::atomic<float>* deltaListen = nullptr;
     // Resolution notifications run on the message thread, outside audio callbacks.
     std::atomic<std::uint64_t> latencyRequest { 0 }, latencyAcknowledged { 0 };
     std::atomic<int> requestedOversampling { 0 }, activePath { 0 };
-    std::atomic<bool> processingTransition { false };
+    std::atomic<bool> processingTransition { false }, spatialTransition { false }, activeMidSide { false };
     int legacyOversamplingIndex = -1;
     bool prepared = false;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AuraAudioProcessor)

@@ -1,124 +1,158 @@
-# Aura 1.6
+# Aura 2.0
 
 Aura is an open-source spectral sweetening and harmonic snapping effect built
 with C++20 and JUCE 8.0.15. It runs as Universal 2 AU/VST3 on macOS and x64
 VST3/standalone on Windows, under the AGPL-3.0-only license.
 
-![Aura interface](docs/Aura-interface.png)
+![Aura 2.0 interface](docs/Aura-interface.png)
 
-*Native macOS editor shown with the silent synthetic test signal.*
+*Native macOS editor with the silent synthetic preview signal.*
 
-- **Tonic and scales:** choose any of the 12 root keys, select a scale, or toggle
-  notes on the custom keyboard. Custom intervals transpose with the root.
-- **Transient and formant preservation:** median HPSS and onset detection route
-  estimated percussion around pitch processing; cepstral envelopes preserve
-  broad timbre, with THROAT shape and TENSION controls.
+- **Mid/Side processing:** choose Stereo, Mid only, Side only, or Mid + Side.
+  Separate Mid and Side blends control processing of the centre and width;
+  unselected components remain latency-aligned dry.
+- **Delta audition:** LISTEN DELTA plays only the difference between the selected
+  processing result and aligned dry, before output gain. Mix scales the difference.
+- **Tonic and scales:** all 12 root keys, eight scale choices including Custom,
+  and an interactive 12-note keyboard. Custom intervals transpose with the root.
 - **Sweetening:** AMOUNT pulls partials toward enabled notes and smoothly raises
-  the main wave, particle, and formant-curve color saturation.
-- **Interactive frequency range:** drag glowing LO-CUT/HI-CUT handles or use
-  LOW END/TOP END to set the sweetening boundaries.
-- **Output and monitoring:** latency-aligned Mix, output gain, Solo, Mute, and
-  Bypass; PRE/POST spectra, momentary LUFS, RMS, and sample-peak metering.
-- **Factory sounds and saved state:** five complete presets, edited-state
-  indicators, host automation for sound controls, and compatible parameter/state recall.
-- **Accessible controls and motion:** named dropdown choices, keyboard note
-  states, and Reduced motion for the spectrum and transient flashes.
-- **Oversampling:** choose 1x, 2x, or 4x and Standard/High anti-alias filter
-  quality; quality is disabled for native 1x processing.
-- **Real-time or Studio analysis:** Real-time uses 4096 host samples for faster
-  response and 8253 samples of reported delay; Studio uses 8192 host samples for
-  higher frequency detail and 16445 samples of delay. At 48 kHz, these are
-  171.9 ms and 342.6 ms respectively. The footer shows the active resolution and
-  latency. Changing resolution briefly fades the output while the host delay updates.
+  the wave, particle, and formant-curve color saturation.
+- **Transient preservation:** median HPSS and onset detection route estimated
+  percussion around harmonic pitch processing. PRESERVE, SENSITIVITY and a
+  transient-preservation BYPASS control this split.
+- **Formant preservation:** cepstral envelopes retain broad timbre. PRESERVE
+  reapplies the envelope; THROAT shifts its shape and TENSION changes its detail.
+- **Interactive range:** drag glowing LO-CUT/HI-CUT handles or use LOW END/TOP END.
+- **Output:** latency-aligned Mix, output gain and global BYPASS.
+- **Factory sounds:** Default, Vocal Magic, 808 Tuner, Lush Pad Sweetener,
+  Drum Transient Preserver; edited-state indicators and host state recall.
+- **Processing settings:** 1x/2x/4x oversampling, Standard/High anti-alias filter
+  quality, and Real-time 4096 or Studio 8192 FFT analysis.
+- **Visualizer:** logarithmic 20 Hz–20 kHz and 0 to −60 dB grid, glowing particle
+  trails, cepstral envelope and transient flashes, with Reduced motion available.
+- **Accessibility:** named dropdown choices, keyboard note states, editable knob
+  values and keyboard interaction.
 
-![Aura processing settings with Real-time mode](docs/Aura-settings.png)
+Aura 2.0 removes the header power button, auxiliary lower SPECTRUM analyzer,
+metering, and output Mute/Solo buttons. The main visualizer remains, and the new
+Mid/Side and Delta rack occupies the freed space.
 
-[Download installers and complete source](https://github.com/Retroalligator/Aura/releases/tag/v1.6.0)
+![Aura processing settings](docs/Aura-settings.png)
 
-- macOS: `Aura-1.6.0-Universal.dmg` includes Universal 2 AU and VST3 plugins.
-- Windows: `Aura-1.6.0-Windows-x64-Setup.exe` installs VST3 and an optional standalone app.
-- `Aura-1.6.0-Windows-x64.exe` is the standalone app; the portable ZIP also includes the VST3 bundle and notices.
+[Download installers and complete source](https://github.com/Retroalligator/Aura/releases/tag/v2.0.0)
 
-This is a development release. macOS installers are ad-hoc signed and not
-notarized; Windows executables are unsigned. See VALIDATION.md for actual checks.
-The v1.5 Windows mode-change callbacks exceeded the 512-sample / 48 kHz deadline
-on the initial CI runner; start with 1x and check your host CPU/buffer settings. See
-[the Windows evidence](Validation/public-release/WINDOWS.md).
+- **macOS:** `Aura-2.0.0-Universal.dmg` contains Universal 2 AU and VST3 plugins.
+- **Windows:** `Aura-2.0.0-Windows-x64-Setup.exe` installs VST3 and an optional
+  standalone app. `Aura-2.0.0-Windows-x64.exe` is the standalone app; the portable
+  ZIP also includes the VST3 bundle and notices.
+- The complete-source archive includes the exact pinned JUCE source.
+  Release assets include CI evidence and SHA-256 checksums.
 
+This is a development pre-release. macOS payloads are ad-hoc signed and not
+notarized; Windows executables are unsigned. See [validation](VALIDATION.md)
+for actual checks and timing limits.
 
-Choose **ROOT KEY** beside **SCALE TYPE** in the SCALES pod to transpose any preset
-or custom scale through all 12 pitch classes, with A4 = 440 Hz. The keyboard highlights the resulting
-notes in gold and cyan. Clicking a key copies the current preset into Custom;
-custom notes are stored as intervals from the tonic and transpose with it.
-C is the default, preserving the meaning of older saved states.
+## Mid/Side and Delta
 
-The header preset manager recalls **Default**, **Vocal Magic**, **808 Tuner**,
-**Lush Pad Sweetener**, and **Drum Transient Preserver**. Each factory program
-recalls all 21 parameters, including root, scale, range, output routing,
-analysis resolution, oversampling factor, and resampling quality. An asterisk marks edits to the
-selected program. The header's factor indicator and Settings button open
-**PROCESSING SETTINGS**; Power and the lower BYPASS button control the same
-bypass parameter.
+Stereo processes left and right independently. The other modes encode
+`Mid = (L + R) / 2` and `Side = (L − R) / 2` before the spectral engine, then
+reconstruct `L = Mid + Side`, `R = Mid − Side`.
 
-Processing Settings offers **Real-time mode** (4096 FFT) or **Studio** (8192 FFT),
-**1x**, **2x**, and **4x**, plus **Standard** or **High**
-resampling filter quality. Standard uses shorter anti-alias filters; High uses
-steeper filters for greater alias rejection. Quality is disabled at 1x and its
-selection is retained for the next resampled mode. Reduced motion, Reset to
-Default, and Done are in the same panel. Changes apply when audio runs: the
-incoming path is primed before its output fades in, and the panel shows the
-pending status. Resolution changes update the actual reported host latency;
-oversampling and quality changes within a resolution retain its delay. Real-time
-is lower latency relative to Studio; it still buffers spectral audio and is not
-a zero-delay monitoring mode.
-Choose the resolution before playback or an offline bounce. It is a saved
-processing preference rather than an automatable sound control; a live UI change
-uses the fade and host-notification handover described below. Oversampling and
-filter quality remain automatable.
+| Mode | Mid | Side |
+|---|---|---|
+| Stereo | Left/right processing; Mid/Side blends inactive | |
+| Mid only | Processed, scaled by Mid blend | Original aligned Side |
+| Side only | Original aligned Mid | Processed, scaled by Side blend |
+| Mid + Side | Processed, scaled by Mid blend | Processed, scaled by Side blend |
 
-Amount pulls spectral peaks toward the nearest enabled note and progressively
-increases the main visualizer's color saturation. Mix blends processed
-and latency-aligned dry audio. Drag the glowing LO-CUT / HI-CUT handles or use
-LOW END / TOP END to set the active sweetening range. An empty custom scale
-preserves pitch. Double click a knob to restore its default.
+Mid and Side percentages blend each processed component with its aligned dry
+component; 0% leaves it unchanged, 100% applies the full effect. AMOUNT controls
+pitch pull inside the engine, and the global Mix then blends the reconstructed
+result with dry. Both components share the scale, range, transient and formant
+settings. In mono, the input is Mid; Side-only passes dry and its Delta is silent.
 
-The five brushed-steel control pods provide:
+LISTEN DELTA subtracts aligned dry from the result after the component blends
+and global Mix, before output gain. Output gain also controls audition level.
+For example, with Mid-only selected, Delta contains only changes to the centre;
+the original stereo width cancels. Mix 0% gives silence in Delta. It includes
+changes from the selected oversampling filters, not only pitch changes.
+Global BYPASS and host bypass restore aligned dry at unity gain, overriding
+Delta and output gain.
 
-- **TRANSIENTS:** PRESERVE routes estimated percussion into an original-phase
-  bypass. SENSITIVITY biases HPSS classification; its BYPASS disables preservation.
-- **FORMANTS:** PRESERVE reapplies the input branch's spectral envelope. THROAT
-  shifts the envelope shape by ±12 semitones; TENSION changes its detail.
-- **SWEETENING:** the oversized AMOUNT knob controls pitch pull and the main
-  spectrum's color intensity.
-- **FREQ RANGE:** LOW END and TOP END set the effect boundaries.
-- **SCALES:** side-by-side ROOT KEY and SCALE TYPE dropdowns, SCALE / CUSTOM,
-  and a 12-note piano keyboard.
+Branch blends and Delta transitions are smoothed over 25 ms. Switching between
+Stereo and a Mid/Side mode changes the engine's input basis: output fades down
+for 25 ms, the active engine restarts and primes in silence, then fades up over
+25 ms. It keeps the same host latency. Switching among the three Mid/Side modes
+only changes the smoothed branch selection. Choose the channel basis before
+playback or bounce; the saved channel preference is nonautomatable.
 
-The lower rack includes a PRE / POST analyzer, output gain (-24 to +12 dB), Mix,
-Mute, and Solo. Solo auditions the fully processed signal while retaining the Mix
-setting. Global BYPASS restores latency-aligned dry at unity gain, overriding
-output gain, Mute, and Solo. All audio transitions are smoothed.
+## Controls and saved sessions
 
-Older states retain their parameter IDs, AU version hints, and prior defaults.
-The legacy `oversampling` Boolean retains version hint 4 and its off default;
-legacy automation still selects 1x or 4x. The appended `oversamplingMode` and
-`processingQuality` choices use version hint 5. States without a mode choice
-migrate the old Boolean to 1x or 4x, and missing quality defaults to High.
-The nonautomatable `realTimeMode` Boolean uses version hint 6 and defaults to false (Studio),
-including when missing from an older saved state. All factory programs also
-default to Studio.
-Factory program identity is stored alongside the parameter state; edited values
-remain intact when reopening a session.
+ROOT KEY beside SCALE TYPE transposes any preset or custom interval pattern
+through all 12 pitch classes, with A4 = 440 Hz. Clicking a keyboard key copies
+the current preset to Custom; custom notes are stored relative to the tonic.
+An empty custom scale preserves pitch. Double click a knob to restore its default.
 
-The meter offers 400 ms momentary LUFS, channel-averaged RMS, and sample peak
-retained over 400 ms. LUFS uses K weighting and sums channel energy; this is not
-an integrated or true-peak meter. POST analyzes both final output channels by
-averaging their spectral power, so opposite-polarity stereo does not cancel.
+The factory preset manager recalls all 25 parameters; an asterisk marks edits.
+Factories start in Stereo with normal audition and Studio analysis. Settings
+opens from the gear or factor indicator. Reduced motion, Reset to Default, and
+Done are in the same panel. The bottom description shows active resolution and
+delay, while Mid/Side shows a pending basis switch.
+
+Output gain spans −24 to +12 dB. Global BYPASS returns aligned dry at unity gain.
+The old `outputMute` and `soloWet` parameter IDs and their behavior remain for
+v1 session/automation compatibility, but their buttons are removed. Reset to
+Default clears these legacy states. All original IDs, ordering and AU version
+hints remain intact. v1 states without the new routing parameters restore
+Stereo, Mid/Side blends at 100%, and Delta off. The new IDs `channelMode`,
+`midAmount`, `sideAmount`, `deltaListen` use AU version hint 7.
+
+Legacy Boolean `oversampling` automation still selects 1x/4x. States without
+`oversamplingMode` migrate this Boolean, and missing quality defaults to High.
+Missing `realTimeMode` selects Studio. Host state retains the factory identity
+and edited values.
+
+## Processing settings and latency
+
+| Analysis | Native FFT / hop | Host delay | Delay at 48 kHz | Bin spacing at 48 kHz |
+|---|---|---|---|---|
+| Studio | 8192 / 2048 | 16445 samples | 342.6 ms | 5.859375 Hz |
+| Real-time | 4096 / 1024 | 8253 samples | 171.9 ms | 11.71875 Hz |
+
+Both modes use periodic Hann windows, 75% overlap, four HPSS lookahead frames
+and 61 samples of FIR alignment. Real-time halves spectral buffering; it still
+has latency. Wet, dry, Mid/Side and Delta use the active bank's aligned delay.
+
+At 1x/2x/4x, internal FFT sizes are 8192/16384/32768 in Studio and
+4096/8192/16384 in Real-time. The sample rate scales with the FFT, retaining each
+bank's physical analysis duration and frequency resolution. Standard uses
+shorter anti-alias filters; High uses steeper filters. Quality is disabled at 1x
+and retained for the next resampled mode.
+
+Oversampling changes prime the incoming path before a 50 ms crossfade, with
+unchanged host delay. Resolution changes prime, fade output down, notify the
+host outside the callback, and fade up after acknowledgement. This briefly
+interrupts audio; choose resolution before playback or bounce. All ten paths
+are allocated before callbacks. Parameter reads and FIFO transport are atomic;
+callbacks use fixed storage and make no host latency notifications.
+
+HPSS uses a centred nine-frame temporal median and 17-bin frequency median,
+with complementary soft masks and a fast/slow onset detector. The estimated
+percussive component bypasses harmonic phase processing and envelope correction
+using original complex bins. Cepstral liftering estimates a broad spectral
+envelope from log magnitudes; processing reapplies the input/processed envelope
+ratio, scaled by Formants Preserve. THROAT shifts the target envelope by ±12
+semitones and TENSION adjusts the 0.5–2 ms lifter cutoff.
+
+The split and envelope are estimates. Overlapping pitched attacks, drums and
+noise can share the masks; broad cepstral shape is not an anatomical measurement.
+The selected frequency range is a processing boundary, not a brick-wall filter.
+Functional tests do not certify listening transparency or every host's deadlines.
 
 ## Build
 
-Requires macOS, Apple command line tools (or Xcode), CMake 3.24+, Python 3, and an
-internet connection for the first JUCE fetch. No Projucer project is required.
+Requires macOS, Apple command line tools or Xcode, CMake 3.24+, Python 3 and
+internet access for the first pinned JUCE fetch. No Projucer project is required.
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
@@ -127,282 +161,65 @@ ctest --test-dir build --output-on-failure
 ./build_and_package.sh
 ```
 
-Both `arm64` and `x86_64` are built by default, targeting macOS 11.0+.
-Bundles are in `build/Aura_artefacts/Release/AU` and `VST3`. The packaging script
-does a clean Release build, runs the tests, verifies both architectures, ad-hoc
-signs and verifies the bundles and disk image, and creates `dist/Aura-1.6.0-Universal.dmg`.
-Override build paths with `AURA_BUILD_DIR` / `AURA_DIST_DIR`, and parallelism
-with `AURA_JOBS`. `AURA_STYLE_DMG=0` skips optional Finder styling in a headless
-session; the installation guide remains included.
-Set `AURA_PACKAGE_ONLY=1` to repackage an existing, already tested Release build.
-Finder layout generation uses Python 3 and two pinned packages in a build-local venv.
+Universal 2 is the default, targeting macOS 11.0+. Bundles appear in
+`build/Aura_artefacts/Release/AU` and `VST3`. Packaging builds, tests, verifies both
+architectures, ad-hoc signs and creates `dist/Aura-2.0.0-Universal.dmg`.
+Override paths with `AURA_BUILD_DIR`/`AURA_DIST_DIR` and parallelism with
+`AURA_JOBS`. `AURA_PACKAGE_ONLY=1` repackages an already tested Release build;
+`AURA_STYLE_DMG=0` skips optional Finder styling in headless CI.
 
-For a silent GUI/DSP review without an audio device, configure with
-`-DAURA_BUILD_PREVIEW=ON`, build target `AuraPreview`, and open the generated
-`Aura Preview.app`. Its synthetic harmonic signal and recurring broadband hits drive the visualizer without
-playing sound or requesting microphone access. This harness is not packaged.
+For silent GUI review, configure with `-DAURA_BUILD_PREVIEW=ON`, build
+`AuraPreview`, then open `Aura Preview.app`. Synthetic harmonics and recurring
+broadband hits drive its display without an audio device or microphone access.
+This developer harness is not packaged.
 
-## Windows build and install
+### Windows
 
-Requires Windows 10 or newer, Visual Studio 2022 with Desktop development with
-C++, CMake 3.24+, and Inno Setup 6 or 7. In PowerShell:
+Requires Windows 10+, Visual Studio 2022 Desktop development with C++, CMake
+3.24+ and Inno Setup 6 or 7. Run `./build_windows.ps1` in PowerShell.
+It builds x64 VST3, standalone and regressions, then packages the Setup EXE and
+portable ZIP. VST3 installs under `C:\Program Files\Common Files\VST3`; the
+optional app under `C:\Program Files\Aura`. The standalone effect needs an audio
+input/device; use VST3 inside a Windows DAW. Windows produces no Audio Unit.
 
-```powershell
-./build_windows.ps1
-```
+### Install and validate
 
-The script builds x64 VST3, the standalone `Aura.exe`, and the regression suite,
-runs the tests, then creates the setup EXE and portable ZIP in `dist/`.
-The setup installs the VST3 bundle under `C:\Program Files\Common Files\VST3`
-and the optional standalone app under `C:\Program Files\Aura`.
-A standalone effect needs an audio input/device to process; it does not load DAW projects.
-Use VST3 for a Windows DAW. No Audio Unit is produced on Windows.
-GitHub Actions builds/tests on a Windows 2022 runner and exercises installation
-and uninstallation on that disposable runner. This does not certify Windows
-hardware/audio drivers or listening performance in a DAW.
-
-## Install and validate
-
-Copy `Aura.component` to `~/Library/Audio/Plug-Ins/Components`, and `Aura.vst3`
-to `~/Library/Audio/Plug-Ins/VST3`. System-wide folders under `/Library` also
-work. Restart the host and rescan. Aura is an effect under AudioStudio.
+Copy `Aura.component` to `~/Library/Audio/Plug-Ins/Components` and `Aura.vst3` to
+`~/Library/Audio/Plug-Ins/VST3`, or use the system-wide folders linked in the DMG.
+Restart the host and rescan. Aura is an effect under AudioStudio.
 
 ```sh
 auval -v aufx Aura AS01
-arch -x86_64 auval -v aufx Aura AS01  # requires Rosetta
+arch -x86_64 auval -v aufx Aura AS01
 ```
 
-In Logic Pro, verify Aura in Plug-in Manager, then insert it on an audio track.
-See `VALIDATION.md` for version-specific results and verification limits. Evidence
-from earlier releases applies to those recorded versions; it does not establish
-v1.6 mode transitions, latency, or callback timing. Direct Logic playback has not
-been verified.
-Further FL Studio work was stopped at the user's request. Current host validation
-uses AU independently of that host; the VST3 payload is built and packaged.
+The second command requires Rosetta. See VALIDATION.md for current checks.
+No additional FL Studio work is performed. Direct DAW listening and project
+recall are not implied by AU validation.
 
-The bundles and DMG are ad-hoc signed for development distribution. No Developer
-ID certificate is available in this environment, and the deliverable is not
-notarized. For normal Gatekeeper approval of an online release, use Developer ID
-signing and Apple notarization.
-Aura is licensed **AGPL-3.0-only**; see LICENSE and THIRD_PARTY_NOTICES.md.
-JUCE 8 modules are used under their AGPLv3 option for this release. The complete-
-source release archive includes the exact JUCE dependency and all its notices;
-CMake automatically uses `vendor/JUCE` when present. Closed-source use of JUCE
-may require a commercial [JUCE license](https://juce.com/legal/juce-8-licence/).
-Dependency licenses are preserved in `ThirdParty/` and the dependency source.
+## Source and license
 
-## Engine
-
-`SpectralProcessor` uses a periodic Hann analysis/synthesis window with 75%
-overlap. Studio uses an **8192-point complex FFT** and **2048-sample hops** at
-native rate; Real-time uses **4096 points** and **1024-sample hops**.
-Four window-square overlaps sum to 1.5, so
-the synthesis gain is 2/3. HPSS stores nine magnitude/complex frames. A centred nine-frame temporal median
-estimates harmonic energy, and a 17-bin frequency median estimates percussive
-energy. Complementary squared soft masks split each bin. Four future frames add
-8192 host samples of lookahead in Studio, or 4096 in Real-time. Combined with
-the respective STFT delay, the spectral engines delay audio by **16384** or
-**8192** host samples. An additional 61 host samples align each bank's processing
-paths and dry audio with the longest FIR resampler delay.
-
-| Resolution | Native FFT / hop | Reported delay | Delay at 48 kHz | Bin spacing at 48 kHz |
-| --- | --- | --- | --- | --- |
-| Studio | 8192 / 2048 | 16445 samples | 342.6 ms | 5.859375 Hz |
-| Real-time | 4096 / 1024 | 8253 samples | 171.9 ms | 11.71875 Hz |
-
-Wet, percussive bypass, dry Mix, and host bypass use the active bank's aligned
-delay. Oversampling, filter quality, and other automation keep this delay stable
-within a bank. Resolution changes report a new delay to the host from a processor
-message-thread timer, with no latency notification inside the audio callback.
-
-```mermaid
-flowchart LR
-    A[Input STFT] --> B[Centred HPSS medians]
-    B --> H[Harmonic + unpreserved percussion]
-    B --> P[Preserved percussion: original complex bins]
-    H --> S[Phase-locked scale snapping]
-    H --> E[Input branch cepstral envelope]
-    E --> F[Envelope reapplication]
-    S --> F
-    F --> SUM[Sum complex bins]
-    P --> SUM
-    SUM --> O[Shared IFFT / overlap-add]
-    O --> M[Latency-aligned wet-dry Mix]
-```
-
-PUNCH 0 sends the complete spectrum through sweetening. PUNCH 1 routes the
-entire estimated percussive component around both phase synthesis and formant
-correction. Intermediate values split that component linearly. The original
-complex percussion bins are added after envelope correction and before the shared
-IFFT/overlap-add. Because both branches use the same window and delay, this linear
-sum is equivalent to summing separately synthesized branches at the output.
-
-A fast/slow amplitude detector supplements the median masks: its fast envelope
-uses a 0.5 ms attack and 5 ms release, while the slow envelope uses 30 ms.
-Detected onsets boost percussive classification only for broad spectral energy;
-SENSITIVITY also biases the median classification. HPSS is an estimate:
-isolated broadband impulses reconstruct without smearing, but overlapping drums,
-pitched attacks, and sustained noise can share both masks. PUNCH 100 does not
-guarantee that every sample of an arbitrary drum recording is classified as
-percussive. The finite STFT/lookahead tail is reported to the host.
-
-Oversampling scales the FFT and hop sizes with the processing rate. Studio uses
-16384/4096 at 2x and 32768/8192 at 4x; Real-time uses 8192/2048 at 2x and
-16384/4096 at 4x. The resamplers use one or two cascaded half-band FIR stages
-respectively. Each factor retains its selected bank's physical analysis window
-and frequency resolution. Source analysis stops at the host Nyquist; generated higher-frequency
-bins pass through the downsampling low-pass filter. Standard and High select
-different FIR filter designs at each factor. Original-phase percussion is
-preserved within the resampled path, whose filtering can change its samples
-relative to unfiltered input.
-
-Ten paths are preallocated in two resolution banks, each containing native,
-2x Standard, 2x High, 4x Standard, and 4x High. Only the active path processes audio
-in steady operation. During a change,
-the incoming path is restarted on its own frame grid and runs alongside the
-active one for its target latency plus one analysis window. Within the same
-resolution, a 50 ms crossfade then switches the output. This keeps the outgoing
-audio in place during priming and avoids
-continually processing every inactive path. The frame grids use different
-offsets to distribute transform work during transitions.
-
-Changing resolution uses a different handover because the old and new paths
-have different delays. After priming, the whole output fades out over 25 ms and
-holds at silence. A processor timer polled every 20 ms updates the host latency
-outside the audio callback; once acknowledged, processing commits to the new
-bank and fades in over 25 ms. Host/message-thread scheduling can extend the
-silent hold. Both dry delay lines remain warm, so the committed bank also selects
-its matching dry timeline. This resolution switch causes a brief interruption
-instead of mixing outputs with different latencies.
-
-Instantaneous frequency comes from unwrapped phase differences after removing
-the expected bin advance. Local spectral peaks own neighboring bins, and
-identity phase locking preserves phase relationships within each peak's lobe.
-Pitch distance is measured in semitones. Amount smoothly interpolates frequency
-in the logarithmic pitch domain; a one-semitone boundary taper avoids a hard
-frequency-range edge. Negative frequencies are restored by Hermitian symmetry.
-The range is a spectral processing boundary rather than a brick-wall audio filter:
-STFT leakage from attacks can cross it. See `VALIDATION.md` for measured startup
-and steady-state behavior.
-
-The full-input formant curve is estimated from the real, symmetric log-magnitude
-spectrum. Audio correction uses the original input envelope of the sweetened
-branch, after HPSS routing, so bypassed percussion is not counted twice. An
-inverse transform produces the real cepstrum. Because the log spectrum is real
-and even, the implementation uses a real forward FFT scaled by `1/N`, which is
-equivalent to its normalized inverse transform. A symmetric rectangular lifter
-retains quefrencies up to 0.5–2 ms, controlled by TENSION (1 ms at its neutral
-setting), and a second real forward FFT recovers the
-broad log envelope. A second envelope is extracted after snapping. Within the
-active frequency range, FORMANTS PRESERVE applies
-`exp(formantPreserve * (targetLogEnvelope - processedLogEnvelope))` to the
-processed complex bins before the IFFT. THROAT samples the original envelope
-on a shifted frequency axis to create the target; at its neutral setting, target
-equals original. At 100% preservation, that is the full target/new
-envelope ratio; at 0%, it applies no correction. The percussive complex bins
-are added afterward, before synthesis. Correction runs when pitch or envelope shape changes.
-A log floor 60 dB below the frame peak (with a 1e-9 minimum), silent-bin
-exclusion, and a floating-point exponent guard avoid
-log-zero and non-finite arithmetic. Zero spectral bins stay zero; boundary-limited
-processing and sparse spectra can prevent an exact subsequent envelope match.
-
-The full-input display envelope is computed only for the engine publishing UI
-frames; audio correction independently extracts the routed input and processed
-envelopes. The cepstral curve estimates broad spectral shape, rather than an
-anatomical measurement. Dense overlapping partials can interfere. HPSS and
-formant preservation improve these specific behaviors; commercial transparency
-on arbitrary mixes still requires listening tests with real material.
-
-## Real-time and UI
-
-Large FFT engines, processor state, and FIFO storage are owned on the heap and
-allocated during construction; their arrays and processing capacity remain fixed.
-The macOS build requires JUCE's vDSP FFT backend; a compile-time guard prevents
-using the allocating fallback for the large real transforms. Windows uses complex
-cepstral transforms with two preallocated buffers instead of the portable real
-transform's large temporary allocation. JUCE's fallback complex backend has a
-private uncontended spin lock per FFT instance; instances are owned by the audio
-path and are never shared with the editor. The callback reads
-cached lock-free APVTS atomics and uses fixed arrays; it does
-not access the ValueTree, allocate C++ objects, log, or notify the
-message thread. Two bounded `juce::AbstractFifo` queues carry spectral frames and the actual
-post-output FFT; full queues
-drop new frames. Only the editor consumes the queue, and it is never reset while
-the audio producer can be active. Mono and stereo matching bus layouts are supported.
-
-The FIFO also carries the original cepstral envelope and actual bypass/correction
-activity. Draining retains peak transient events across queued frames so brief hits
-are not lost. A violet cubic spline overlays the input envelope; detected bypassed
-hits produce a short white vertical flash. The TRANSIENTS and FORMANTS preservation knobs have LED rings driven
-by bypassed spectral energy and energy-weighted log-envelope correction, rather
-than just their knob positions.
-
-The editor targets 60 Hz updates on a logarithmic 20 Hz–20 kHz grid spanning
-0 to −60 dB. It interpolates magnitude displays and paints rainbow cubic curves,
-up to 4096 data-driven particles, steel panels, and metallic rotary knobs with
-colored indicators. New analysis frames arrive at the host sample rate divided
-by 2048 in Studio or 1024 in Real-time, rather than at the GUI timer rate. The
-separate final-output analyzer keeps its 8192-point FFT and 2048-sample hop in
-both banks. Frames carry the active FFT size and valid bin count so displays and
-frequency inspection use the right grid after a resolution change. Actual frame pacing depends on the
-host and graphics environment. The display holds its latest spectrum targets
-between analysis frames; when callbacks stop, targets decay after the longer of
-250 ms or three analysis hops. Actual silent frames still release the display.
-The main wave, particle trails, and formant curve smoothly increase in color
-saturation as AMOUNT rises. The hue palette stays consistent, and the lower
-POST analyzer retains its fixed palette. This is visual feedback for sweetening
-strength. Processing Settings offers Reduced motion, which disables particle
-trails and transient flashes while retaining live spectrum and meter updates.
-Anti-aliased vector graphics render through an attached `juce::OpenGLContext`. JUCE component painting also
-provides the normal software path when no GL context is available. Sound controls
-and oversampling/quality choices are automatable. All parameters, including the
-nonautomatable resolution preference, are serialized through APVTS. Custom keyboard changes
-use host gestures and copy the current preset before switching to Custom.
-The root, scale, factory, and processing settings dropdowns expose named choices to assistive clients
-as well as retaining normal popup and keyboard selection.
-
-The visual treatment follows the earlier attached steel-rack reference. The
-separately named `image_b90fe6.jpg` and `watermarked_img_1704036837373526381.jpg`
-were unavailable in this workspace, so this build does not claim a pixel-exact
-match to those files. `UI_REVIEW.md` records the actual interface review.
-Measured callback timing and AU validation belong in `VALIDATION.md`; passing
-functional checks alone does not establish audio deadlines on every host or
-commercial listening quality.
-
-## Source map
-
-- `Source/SpectralProcessor.*`: centred HPSS, onset detection, pitch mapping,
-  phase locking, and shared synthesis of processed/original-phase branches.
+- `Source/SpectralProcessor.*`: STFT, HPSS, snapping, phase locking and synthesis.
 - `Source/CepstralEnvelope.h`: fixed-storage cepstral projection and median helpers.
-- `Source/PluginProcessor.*`: buses, resolution/path selection, priming, latency
-  notifications, parameters, smoothing,
-  factory program recall, and state.
-- `Source/ProcessingPaths.h`: fixed native/2x/4x processing in both resolution banks
-  and FIR resampling paths.
-- `Source/FactoryPresets.h`: complete factory settings and parameter IDs.
-- `Source/SpectrumFifo.h`: bounded SPSC transport and calibrated FFT display gain.
-- `Source/OutputMonitor.h`: fixed-storage stereo post FFT and K-weighted loudness.
-- `Source/RackDisplays.h`: auxiliary analyzer and segmented output meter.
-- `Source/PluginEditor.*`, `SpectralVisualizer.*`, `KeyboardSelector.*`: UI.
-- `Source/SettingsPanel.h`: oversampling/quality choices and processing status.
-- `Source/AccessibleControls.h`: named-choice accessibility for the dropdowns.
-- `Tests/TestMain.cpp`: deterministic signal and processor checks.
-- `Packaging/`: installation graphics and DMG layout.
+- `Source/PluginProcessor.*`: parameters, LR/MS routing, Delta, aligned output,
+  resolution/path transitions, smoothing, programs and state.
+- `Source/ProcessingPaths.h`: native and FIR-resampled paths for both resolutions.
+- `Source/PluginEditor.*`: control pods and Mid/Side/Delta rack.
+- `Source/SpectralVisualizer.*`, `KeyboardSelector.*`, `SettingsPanel.h`: displays
+  and processing controls; OpenGL-backed vector painting with a software fallback.
+- `Tests/TestMain.cpp`: processor and DSP regressions, including M/S isolation,
+  Delta reconstruction, mono, migration and live basis changes.
+- `Packaging/` and `.github/workflows/`: installers and release CI.
 
-Algorithm background: [Röbel and Rodet, DAFx 2005](https://www.dafx.de/paper-archive/2005/P_030.pdf) discusses cepstral spectral-envelope estimation and preservation. Aura uses a bounded single-pass lifter rather than their iterative true-envelope estimator.
+Aura is AGPL-3.0-only; JUCE 8 modules use their AGPLv3 option. The complete-source
+release archive includes the exact dependency and notices. CMake uses
+`vendor/JUCE` when present. See LICENSE and THIRD_PARTY_NOTICES.md. A closed-source
+JUCE product may require a [commercial JUCE license](https://juce.com/legal/juce-8-licence/).
 
-Reference APIs: [JUCE FFT](https://docs.juce.com/master/classjuce_1_1dsp_1_1FFT.html),
-[APVTS](https://docs.juce.com/master/classjuce_1_1AudioProcessorValueTreeState.html),
-[AbstractFifo](https://docs.juce.com/master/classjuce_1_1AbstractFifo.html).
+Algorithm background: [Röbel and Rodet, DAFx 2005](https://www.dafx.de/paper-archive/2005/P_030.pdf).
+Aura uses a single-pass lifter rather than their iterative true-envelope method.
 
-Meter background: [EBU loudness metering](https://tech.ebu.ch/loudness/) and
-[EBU Tech 3341](https://tech.ebu.ch/docs/tech/tech3341.pdf). The signal suite checks
-stereo 1 kHz loudness at 44.1, 48, 96, and 192 kHz; it does not constitute full
-EBU R128 certification.
-
-Publishing a tagged GitHub release starts `.github/workflows/release.yml`. It
-builds the Universal 2 macOS DMG and Windows x64 setup/standalone files, runs
-regressions, checks the packaged AU and Windows install/uninstall, then uploads
-all installers, complete corresponding source (with pinned JUCE), CI evidence,
-and SHA-256 checksums. Only the final publish job receives repository write
-permission. Unsigned development installers remain marked as previews.
+Publishing a tagged release builds/tests macOS and Windows, validates the
+packaged AU, exercises Windows install/uninstall, and uploads installers,
+complete source, evidence and checksums. Only the final publish job receives
+repository write permission.

@@ -1,5 +1,14 @@
 # Aura changes
 
+## 2.0.0
+
+- Replaced the auxiliary spectrum and metering rack with Stereo/Mid-only/Side-only/Mid + Side processing and independent component blends. Unselected components remain aligned dry; mono has no Side.
+- Added LISTEN DELTA: selected processed result minus latency-aligned dry before gain, scaled by global Mix. Bypass returns dry.
+- Removed the header power and output Mute/Solo buttons; retained their original parameter IDs for old sessions and automation.
+- Added smoothed component/audition changes and a fade/prime handover when switching the spectral engine between LR and MS input bases, with unchanged host latency.
+- Appended four AU version-hint-7 parameters. Factories and v1 state migration default to Stereo, full component blends and Delta off.
+- Updated product images, feature guide and installer versioning to Aura 2.0.
+
 ## 1.6.0
 
 - Added Real-time processing with a native 4096-point FFT and 1024-sample hops,

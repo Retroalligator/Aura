@@ -218,6 +218,106 @@ void realTimeRoundTrip(const ProcessingProfile& profile, int audition, bool rese
     p.removeListener(&host);
     check(allocations == 0, "both live resolution changes and incoming-path restarts perform no callback C++ allocations");
 }
+// Spatial processing is tested through the real processor, including its delay,
+// oversampling, nonlinear snapping and output blend, rather than a matrix copy.
+using StereoRender = std::array<std::vector<float>, 2>;
+StereoRender renderSpatial(int route, float midBlend, float sideBlend, bool delta, float mixValue,
+                           float gain, const ProcessingProfile& profile, bool realTime, bool mono = false, bool bypass = false)
+{
+    AuraAudioProcessor p; selectProfile(p, profile); set(p, "realTimeMode", realTime ? 1.0f : 0.0f);
+    set(p, "channelMode", static_cast<float>(route)); set(p, "midAmount", midBlend); set(p, "sideAmount", sideBlend);
+    set(p, "deltaListen", delta ? 1.0f : 0.0f); set(p, "mix", mixValue); set(p, "outputGain", gain);
+    set(p, "amount", 1); set(p, "scaleMode", 7); set(p, "customNoteBits", 1 << 9);
+    set(p, "transientPreserve", 0); set(p, "formantPreserve", 0); set(p, "freqLow", 20); set(p, "freqHigh", 20000);
+    if (mono) p.setPlayConfigDetails(1, 1, 48000, 127);
+    p.prepareToPlay(48000, 127);
+    juce::AudioBuffer<float> block(mono ? 1 : 2, 127); juce::MidiBuffer midi;
+    StereoRender out; for (auto& channel : out) channel.resize(60000);
+    for (int start = 0; start < 60000; start += 127)
+    {
+        for (int i = 0; i < 127; ++i)
+        {
+            const auto t = juce::MathConstants<double>::twoPi * (start + i) / 48000;
+            const auto mid = static_cast<float>(0.12 * std::sin(t * 430)), side = static_cast<float>(0.07 * std::sin(t * 650));
+            block.setSample(0, i, mid + (mono ? 0.0f : side)); if (!mono) block.setSample(1, i, mid - side);
+        }
+        processWatched(p, block, midi, bypass);
+        for (int c = 0; c < block.getNumChannels(); ++c)
+            for (int i = 0; i < 127 && start + i < 60000; ++i) out[static_cast<std::size_t>(c)][static_cast<std::size_t>(start + i)] = block.getSample(c, i);
+    }
+    return out;
+}
+void testSpatialAndDelta()
+{
+    allocations = 0;
+    for (auto realTime : { false, true })
+        for (const auto& profile : processingProfiles)
+        {
+            const auto dry = renderSpatial(0, 1, 1, false, 0, 0, profile, realTime);
+            const auto mid = renderSpatial(1, 1, 1, false, 1, 0, profile, realTime);
+            const auto side = renderSpatial(2, 1, 1, false, 1, 0, profile, realTime);
+            const auto both = renderSpatial(3, 1, 1, false, 1, 0, profile, realTime);
+            const auto delta = renderSpatial(3, 0.35f, 0.7f, true, 0.6f, -6, profile, realTime);
+            const auto full = renderSpatial(3, 0.35f, 0.7f, false, 0.6f, -6, profile, realTime);
+            const auto zero = renderSpatial(3, 0, 0, true, 1, 0, profile, realTime);
+            float untouched = 0, separation = 0, deltaError = 0, zeroPeak = 0, changed = 0;
+            const auto gain = juce::Decibels::decibelsToGain(-6.0f);
+            for (std::size_t i = 40000; i < dry[0].size(); ++i)
+            {
+                untouched = std::max({ untouched, std::abs((mid[0][i] - mid[1][i]) - (dry[0][i] - dry[1][i])), std::abs((side[0][i] + side[1][i]) - (dry[0][i] + dry[1][i])) });
+                for (std::size_t c = 0; c < 2; ++c)
+                {
+                    separation = std::max(separation, std::abs(both[c][i] - (mid[c][i] + side[c][i] - dry[c][i])));
+                    deltaError = std::max(deltaError, std::abs(delta[c][i] - (full[c][i] - gain * dry[c][i])));
+                    zeroPeak = std::max(zeroPeak, std::abs(zero[c][i])); changed = std::max(changed, std::abs(both[c][i] - dry[c][i]));
+                }
+            }
+            std::cout << "Spatial " << realTime << " / " << profile.name << ": untouched/separation/delta/zero " << untouched << '/' << separation << '/' << deltaError << '/' << zeroPeak << '\n';
+            check(untouched < 2.0e-6f && separation < 2.0e-6f && changed > 0.02f, "Mid-only preserves Side; Side-only preserves Mid; both combine independent processed channels");
+            check(deltaError < 2.0e-6f && zeroPeak < 2.0e-6f, "delta equals blended processed minus aligned dry before gain; zero branch blends null");
+        }
+    const auto zeroMix = renderSpatial(3, 1, 1, true, 0, 6, processingProfiles[0], true);
+    check(rms(zeroMix[0], 40000) < 1.0e-12, "delta at global Mix zero is silent despite output gain");
+    const auto bypass = renderSpatial(3, 1, 1, true, 1, -6, processingProfiles[0], true, false, true);
+    const auto dry = renderSpatial(0, 1, 1, false, 0, 0, processingProfiles[0], true);
+    float bypassError = 0; for (std::size_t i = 40000; i < dry[0].size(); ++i) bypassError = std::max(bypassError, std::abs(bypass[0][i] - dry[0][i]));
+    check(bypassError < 2.0e-6f, "host bypass overrides delta and gain with aligned unity dry");
+    const auto monoSide = renderSpatial(2, 1, 1, true, 1, 0, processingProfiles[0], true, true);
+    check(rms(monoSide[0], 40000) < 1.0e-12, "mono Side-only processing is dry and its delta is silent");
+    check(allocations == 0, "spatial and delta prepared callbacks perform no C++ allocations");
+    {
+        AuraAudioProcessor p; set(p, "channelMode", 3); set(p, "midAmount", 0.37f); set(p, "sideAmount", 0.61f); set(p, "deltaListen", 1);
+        juce::MemoryBlock data; p.getStateInformation(data); p.setCurrentProgram(0); p.setStateInformation(data.getData(), static_cast<int>(data.getSize()));
+        check(exact(p.parameters.getRawParameterValue("channelMode")->load(), 3) && exact(p.parameters.getRawParameterValue("deltaListen")->load(), 1)
+            && std::abs(p.parameters.getRawParameterValue("midAmount")->load() - 0.37f) < 1.0e-6f && std::abs(p.parameters.getRawParameterValue("sideAmount")->load() - 0.61f) < 1.0e-6f, "spatial mode, branch blends and delta serialize");
+        auto old = p.parameters.copyState(); for (auto* id : { "channelMode", "midAmount", "sideAmount", "deltaListen" }) old.removeChild(old.getChildWithProperty("id", id), nullptr);
+        auto xml = old.createXml(); juce::AudioProcessor::copyXmlToBinary(*xml, data); p.setStateInformation(data.getData(), static_cast<int>(data.getSize()));
+        check(exact(p.parameters.getRawParameterValue("channelMode")->load(), 0) && exact(p.parameters.getRawParameterValue("deltaListen")->load(), 0)
+            && exact(p.parameters.getRawParameterValue("midAmount")->load(), 1) && exact(p.parameters.getRawParameterValue("sideAmount")->load(), 1), "v1 states restore Stereo, full branch blends and delta off");
+        bool presets = true;
+        for (int n = 0; n < p.getNumPrograms(); ++n) { set(p, "channelMode", 3); set(p, "deltaListen", 1); p.setCurrentProgram(n); presets = presets && !p.isCurrentProgramModified() && exact(p.parameters.getRawParameterValue("channelMode")->load(), 0) && exact(p.parameters.getRawParameterValue("deltaListen")->load(), 0); }
+        check(presets, "all factory presets restore Stereo and normal audition");
+    }
+    {
+        AuraAudioProcessor p; set(p, "amount", 0); p.prepareToPlay(48000, 1537);
+        juce::AudioBuffer<float> block(2, 1537); juce::MidiBuffer midi; int position = 0; bool safe = true;
+        for (int n = 0; n < 40; ++n) { fillOppositeTone(block, position); processWatched(p, block, midi); position += 1537; }
+        float previous = block.getSample(0, 1536), jump = 0;
+        for (int route : { 1, 2, 3, 0, 3, 0 })
+        {
+            set(p, "channelMode", static_cast<float>(route));
+            for (int n = 0; n < 40; ++n)
+            {
+                fillOppositeTone(block, position); processWatched(p, block, midi);
+                for (int i = 0; i < 1537; ++i) { const auto x = block.getSample(0, i); jump = std::max(jump, std::abs(x - previous)); previous = x; safe = safe && std::isfinite(x) && std::abs(x) < 0.25f; }
+                position += 1537;
+            }
+            safe = safe && p.isActiveMidSide() == (route != 0) && !p.isSpatialChangePending() && p.getLatencySamples() == expectedHostLatency;
+        }
+        check(safe && jump < 0.05f && allocations == 0, "live channel basis changes fade, prime and settle without callback allocations or latency changes");
+    }
+}
+
 void testRealTimeMode()
 {
     check(cepstralMatchesComplexReference<12>(), "4096-point Real-time cepstrum matches the complex reference");
@@ -324,13 +424,13 @@ void testRealTimeMode()
         p.setStateInformation(state.getData(), static_cast<int>(state.getSize())); p.prepareToPlay(48000, 1537);
         check(!p.isRealTimeMode() && !p.isActiveRealTimeMode() && p.getAnalysisFftSize() == 8192 && p.getLatencySamples() == expectedHostLatency,
               "older state missing Real-time mode restores Studio even when current mode was Real-time");
-        bool factoryValid = aura::parameterIds.size() == 21 && p.getParameters().size() == 21;
+        bool factoryValid = aura::parameterIds.size() == 25 && p.getParameters().size() == 25;
         for (int program = 0; program < p.getNumPrograms(); ++program)
         {
             set(p, "realTimeMode", 1); const auto modified = p.isCurrentProgramModified(); p.setCurrentProgram(program);
             factoryValid = factoryValid && modified && !p.isRealTimeMode() && !p.isCurrentProgramModified();
         }
-        check(factoryValid, "all 21-parameter factory presets reset Real-time mode and report restored identity");
+        check(factoryValid, "all 25-parameter factory presets reset Real-time mode and report restored identity");
     }
     for (const auto& profile : processingProfiles)
         for (int audition = 0; audition < 3; ++audition) realTimeRoundTrip(profile, audition, false);
@@ -356,6 +456,7 @@ int main()
     check(cepstralMatchesComplexReference<aura::fftOrder>() && cepstralMatchesComplexReference<aura::fftOrder + 1>()
           && cepstralMatchesComplexReference<aura::fftOrder + 2>(), "real-only cepstrum matches complex reference at native, 2x and 4x sizes");
     testRealTimeMode();
+    testSpatialAndDelta();
     check(aura::noteMask(0, 0) == 0xAB5 && aura::noteMask(7, 0x123) == 0x123, "scale masks");
     check(std::abs(aura::nearestNoteHz(430, 1 << 9) - 440) < 0.01f, "A440 target mapping");
     check(exact(aura::nearestNoteHz(430, 0), 430), "empty mask maps to identity");

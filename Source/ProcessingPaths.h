@@ -31,7 +31,7 @@ public:
     virtual void prepare(double rate, int alignment, int frameOffset) noexcept = 0;
     virtual void restart(std::uint64_t hostPosition) noexcept = 0;
     virtual void process(const juce::dsp::AudioBlock<const float>& input, int channels,
-                         const SpectralSettings&, SpectrumFifo*) noexcept = 0;
+                         const std::array<SpectralSettings, 2>&, SpectrumFifo*, int displayChannel = 0) noexcept = 0;
     float sample(int channel, int index) const noexcept { return output[static_cast<std::size_t>(channel)][static_cast<std::size_t>(index)]; }
 protected:
     std::array<std::array<float, processingChunkSize>, 2> output {};
@@ -58,7 +58,7 @@ public:
         resampler.reset();
     }
     void process(const juce::dsp::AudioBlock<const float>& input, int channels,
-                 const SpectralSettings& settings, SpectrumFifo* fifo) noexcept override
+                 const std::array<SpectralSettings, 2>& settings, SpectrumFifo* fifo, int displayChannel = 0) noexcept override
     {
         std::array<float*, 2> pointers { output[0].data(), output[1].data() };
         juce::dsp::AudioBlock<float> down(pointers.data(), 2, input.getNumSamples());
@@ -68,7 +68,7 @@ public:
             {
                 float dry = 0;
                 auto* samples = up.getChannelPointer(static_cast<std::size_t>(c));
-                samples[i] = dsp[static_cast<std::size_t>(c)].processSample(samples[i], dry, settings, c == 0 ? fifo : nullptr);
+                samples[i] = dsp[static_cast<std::size_t>(c)].processSample(samples[i], dry, settings[static_cast<std::size_t>(c)], c == displayChannel ? fifo : nullptr);
             }
         resampler.processSamplesDown(down);
         for (int c = 0; c < channels; ++c)
@@ -99,13 +99,13 @@ public:
         for (auto& delay : delays) delay.reset();
     }
     void process(const juce::dsp::AudioBlock<const float>& input, int channels,
-                 const SpectralSettings& settings, SpectrumFifo* fifo) noexcept override
+                 const std::array<SpectralSettings, 2>& settings, SpectrumFifo* fifo, int displayChannel = 0) noexcept override
     {
         for (std::size_t i = 0; i < input.getNumSamples(); ++i)
             for (int c = 0; c < channels; ++c)
             {
                 float dry = 0; const auto channel = static_cast<std::size_t>(c);
-                output[channel][i] = delays[channel].process(dsp[channel].processSample(input.getChannelPointer(channel)[i], dry, settings, c == 0 ? fifo : nullptr));
+                output[channel][i] = delays[channel].process(dsp[channel].processSample(input.getChannelPointer(channel)[i], dry, settings[static_cast<std::size_t>(c)], c == displayChannel ? fifo : nullptr));
             }
     }
 private:

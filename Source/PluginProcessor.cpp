@@ -20,11 +20,14 @@ struct AuraAudioProcessor::ProcessingState
     };
     // Keep both dry timelines warm; each resolution has its own actual delay.
     std::array<std::array<aura::FixedDelay<aura::latencySamples + 256>, 2>, 2> dryDelay;
-    std::array<std::array<float, chunkSize>, 2> input {};
+    std::array<std::array<float, chunkSize>, 2> input {}, dryInput {};
     aura::OutputAnalyser analyser;
     juce::SmoothedValue<float> fade, resolutionGain;
     enum class ResolutionStage { normal, fadeOut, awaitHost, fadeIn };
     ResolutionStage resolutionStage = ResolutionStage::normal;
+    enum class SpatialStage { normal, fadeOut, prime, fadeIn };
+    SpatialStage spatialStage = SpatialStage::normal;
+    bool midSide = false, requestedMidSide = false;
     int filterLatency = 0, active = 0, pending = -1, primeRemaining = 0, resumeRemaining = 0;
     std::uint64_t hostPosition = 0, latencySequence = 0, notification = 0;
     double sampleRate = 48000;
@@ -39,7 +42,7 @@ struct AuraAudioProcessor::ProcessingState
     static int pathIndex(int mode, int qualityMode, bool realTime = false) noexcept
     { return (realTime ? 5 : 0) + (mode == 0 ? 0 : 1 + (mode - 1) * 2 + qualityMode); }
     int latency() const noexcept { return spectralLatency(active) + filterLatency; }
-    void prepare(double rate, int mode, int qualityMode, bool realTime) noexcept
+    void prepare(double rate, int mode, int qualityMode, bool realTime, bool useMidSide) noexcept
     {
         sampleRate = rate;
         constexpr std::array<int, 5> offsets { 0, 256, 768, 1024, 1536 };
@@ -48,26 +51,26 @@ struct AuraAudioProcessor::ProcessingState
         for (int b = 0; b < 2; ++b)
             for (auto& delay : dryDelay[static_cast<std::size_t>(b)]) delay.prepare((b == 0 ? aura::latencySamples : aura::latencySamples / 2) + filterLatency);
         analyser.prepare(rate); fade.reset(rate, 0.05); resolutionGain.reset(rate, 0.025);
-        active = pathIndex(mode, qualityMode, realTime); clearTransition(); hostPosition = 0;
+        active = pathIndex(mode, qualityMode, realTime); clearTransition(); hostPosition = 0; midSide = requestedMidSide = useMidSide;
     }
     void clearTransition() noexcept
     {
         pending = -1; primeRemaining = 0; resumeRemaining = 0; notification = 0;
-        resolutionStage = ResolutionStage::normal;
+        resolutionStage = ResolutionStage::normal; spatialStage = SpatialStage::normal;
         fade.setCurrentAndTargetValue(0); resolutionGain.setCurrentAndTargetValue(1);
     }
-    void reset(int mode, int qualityMode, bool committedRealTime) noexcept
+    void reset(int mode, int qualityMode, bool committedRealTime, bool useMidSide) noexcept
     {
         // reset() keeps the resolution already reported to the host, including
         // a reset triggered synchronously by its latency-change notification.
         // A new request still follows
         // the normal host-notification protocol on subsequent callbacks.
         const auto realTime = committedRealTime;
-        const auto interruptedResolution = resolutionStage != ResolutionStage::normal;
+        const auto interruptedResolution = resolutionStage != ResolutionStage::normal || spatialStage != SpatialStage::normal;
         for (auto& path : paths) path->restart(0);
         for (auto& delays : dryDelay) for (auto& delay : delays) delay.reset();
         analyser.reset(); active = pathIndex(mode, qualityMode, realTime);
-        clearTransition(); hostPosition = 0;
+        clearTransition(); hostPosition = 0; midSide = requestedMidSide = useMidSide;
         if (interruptedResolution)
         {
             // A host reset discards the primed histories. Keep silence until
@@ -77,9 +80,15 @@ struct AuraAudioProcessor::ProcessingState
             resolutionStage = ResolutionStage::fadeIn;
         }
     }
+    void requestSpatial(bool desired) noexcept
+    {
+        requestedMidSide = desired;
+        if (spatialStage != SpatialStage::normal || resolutionStage != ResolutionStage::normal || pending >= 0 || desired == midSide) return;
+        spatialStage = SpatialStage::fadeOut; resolutionGain.setTargetValue(0);
+    }
     void request(int desired) noexcept
     {
-        if (resolutionStage != ResolutionStage::normal) return;
+        if (resolutionStage != ResolutionStage::normal || spatialStage != SpatialStage::normal) return;
         // A superseded request can be cancelled while its output is inaudible.
         // Finish an in-progress fade before applying a later request.
         if (pending >= 0 && primeRemaining > 0 && pending != desired) pending = -1;
@@ -104,11 +113,22 @@ struct AuraAudioProcessor::ProcessingState
     }
     float nextResolutionGain() noexcept
     {
-        if (resumeRemaining > 0 && --resumeRemaining == 0) resolutionGain.setTargetValue(1);
+        if (resumeRemaining > 0 && --resumeRemaining == 0)
+        { resolutionGain.setTargetValue(1); if (spatialStage == SpatialStage::prime) spatialStage = SpatialStage::fadeIn; }
         return resolutionGain.getNextValue();
     }
     void finishChunk(std::atomic<std::uint64_t>& request, const std::atomic<std::uint64_t>& acknowledged) noexcept
     {
+        if (spatialStage == SpatialStage::fadeOut && !resolutionGain.isSmoothing())
+        {
+            midSide = requestedMidSide;
+            // Inactive paths restart when requested; clear only the live engine.
+            paths[static_cast<std::size_t>(active)]->restart(hostPosition);
+            resumeRemaining = latency() + analysisSize(active);
+            spatialStage = SpatialStage::prime;
+        }
+        if (spatialStage == SpatialStage::fadeIn && !resolutionGain.isSmoothing()) spatialStage = SpatialStage::normal;
+        if (spatialStage != SpatialStage::normal) return;
         if (resolutionStage == ResolutionStage::fadeOut && !resolutionGain.isSmoothing())
         {
             resolutionStage = ResolutionStage::awaitHost;
@@ -146,6 +166,8 @@ AuraAudioProcessor::AuraAudioProcessor()
     globalBypass = parameters.getRawParameterValue("globalBypass");
     quality = parameters.getRawParameterValue("processingQuality");
     realTimeMode = parameters.getRawParameterValue("realTimeMode");
+    channelMode = parameters.getRawParameterValue("channelMode"); midAmount = parameters.getRawParameterValue("midAmount");
+    sideAmount = parameters.getRawParameterValue("sideAmount"); deltaListen = parameters.getRawParameterValue("deltaListen");
     legacyOversamplingIndex = parameters.getParameter("oversampling")->getParameterIndex();
     parameters.getParameter("oversampling")->addListener(this);
     parameters.getParameter("oversamplingMode")->addListener(this);
@@ -245,13 +267,17 @@ juce::AudioProcessorValueTreeState::ParameterLayout AuraAudioProcessor::createPa
     layout.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{"oversamplingMode", 5}, "Oversampling", juce::StringArray { "1x", "2x", "4x" }, 0));
     layout.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{"processingQuality", 5}, "Resampling quality", juce::StringArray { "Standard", "High" }, 1));
     layout.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"realTimeMode", 6}, "Real-time mode", false, juce::AudioParameterBoolAttributes().withAutomatable(false)));
+    layout.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{"channelMode", 7}, "Channel processing", juce::StringArray { "Stereo", "Mid only", "Side only", "Mid + Side" }, 0, juce::AudioParameterChoiceAttributes().withAutomatable(false)));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{"midAmount", 7}, "Mid amount", juce::NormalisableRange<float>(0, 1), 1.0f, percent));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{"sideAmount", 7}, "Side amount", juce::NormalisableRange<float>(0, 1), 1.0f, percent));
+    layout.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"deltaListen", 7}, "Listen to delta", false));
     return layout;
 }
 void AuraAudioProcessor::prepareToPlay(double rate, int)
 {
     latencyRequest.store(0, std::memory_order_relaxed);
     latencyAcknowledged.store(0, std::memory_order_relaxed);
-    processing->prepare(rate, getOversamplingMode(), getProcessingQuality(), isRealTimeMode());
+    processing->prepare(rate, getOversamplingMode(), getProcessingQuality(), isRealTimeMode(), channelMode->load() > 0.5f);
     activePath.store(processing->active, std::memory_order_relaxed);
     processingTransition.store(false, std::memory_order_relaxed);
     mixSmooth.reset(rate, 0.025);
@@ -259,6 +285,11 @@ void AuraAudioProcessor::prepareToPlay(double rate, int)
     gainSmooth.reset(rate, 0.025);
     gainSmooth.setCurrentAndTargetValue(globalBypass->load() > 0.5f ? 1.0f : outputMute->load() > 0.5f ? 0.0f : juce::Decibels::decibelsToGain(outputGain->load()));
 
+    midSmooth.reset(rate, 0.025); sideSmooth.reset(rate, 0.025); deltaSmooth.reset(rate, 0.025);
+    const auto route = juce::roundToInt(channelMode->load());
+    midSmooth.setCurrentAndTargetValue(route == 2 ? 0.0f : midAmount->load()); sideSmooth.setCurrentAndTargetValue(route == 1 ? 0.0f : sideAmount->load());
+    deltaSmooth.setCurrentAndTargetValue(globalBypass->load() > 0.5f ? 0.0f : deltaListen->load());
+    activeMidSide.store(processing->midSide); spatialTransition.store(false);
     metering.prepare(rate);
     prepared = true;
     setLatencySamples(processing->latency());
@@ -266,13 +297,17 @@ void AuraAudioProcessor::prepareToPlay(double rate, int)
 void AuraAudioProcessor::reset()
 {
     latencyRequest.store(0, std::memory_order_relaxed);
-    processing->reset(getOversamplingMode(), getProcessingQuality(), getLatencySamples() < aura::latencySamples);
+    processing->reset(getOversamplingMode(), getProcessingQuality(), getLatencySamples() < aura::latencySamples, channelMode->load() > 0.5f);
     activePath.store(processing->active, std::memory_order_relaxed);
     processingTransition.store(processing->transitioning(), std::memory_order_relaxed);
     const auto bypass = globalBypass->load() > 0.5f;
     mixSmooth.setCurrentAndTargetValue(bypass ? 0.0f : soloWet->load() > 0.5f ? 1.0f : mix->load());
     gainSmooth.setCurrentAndTargetValue(bypass ? 1.0f : outputMute->load() > 0.5f ? 0.0f : juce::Decibels::decibelsToGain(outputGain->load()));
 
+    const auto route = juce::roundToInt(channelMode->load());
+    midSmooth.setCurrentAndTargetValue(route == 2 ? 0.0f : midAmount->load()); sideSmooth.setCurrentAndTargetValue(route == 1 ? 0.0f : sideAmount->load());
+    deltaSmooth.setCurrentAndTargetValue(bypass ? 0.0f : deltaListen->load());
+    activeMidSide.store(processing->midSide); spatialTransition.store(processing->spatialStage != ProcessingState::SpatialStage::normal);
     metering.reset();
 }
 bool AuraAudioProcessor::isBusesLayoutSupported(const BusesLayout& layout) const
@@ -298,39 +333,71 @@ void AuraAudioProcessor::process(juce::AudioBuffer<float>& buffer, bool bypassed
     const auto bypass = bypassed || globalBypass->load() > 0.5f;
     mixSmooth.setTargetValue(bypass ? 0.0f : soloWet->load() > 0.5f ? 1.0f : mix->load());
     gainSmooth.setTargetValue(bypass ? 1.0f : outputMute->load() > 0.5f ? 0.0f : juce::Decibels::decibelsToGain(outputGain->load()));
+    const auto route = juce::jlimit(0, 3, juce::roundToInt(channelMode->load()));
+    midSmooth.setTargetValue(route == 2 ? 0.0f : midAmount->load()); sideSmooth.setTargetValue(route == 1 ? 0.0f : sideAmount->load());
+    deltaSmooth.setTargetValue(bypass ? 0.0f : deltaListen->load());
     const auto count = juce::jmin(2, juce::jmin(getTotalNumInputChannels(), buffer.getNumChannels()));
     for (int c = count; c < buffer.getNumChannels(); ++c) buffer.clear(c, 0, buffer.getNumSamples());
     auto& state = *processing;
     const auto desired = ProcessingState::pathIndex(getOversamplingMode(), getProcessingQuality(), isRealTimeMode());
     for (int offset = 0; offset < buffer.getNumSamples(); offset += ProcessingState::chunkSize)
     {
-        state.request(desired);
+        state.requestSpatial(route != 0); state.request(desired);
         const auto size = juce::jmin(ProcessingState::chunkSize, buffer.getNumSamples() - offset);
         std::array<const float*, 2> pointers { state.input[0].data(), state.input[1].data() };
         for (int c = 0; c < 2; ++c)
             for (int i = 0; i < size; ++i)
             {
                 const auto sample = c < count ? buffer.getSample(c, offset + i) : 0.0f;
-                state.input[static_cast<std::size_t>(c)][static_cast<std::size_t>(i)] = std::isfinite(sample) ? sample : 0.0f;
+                state.input[static_cast<std::size_t>(c)][static_cast<std::size_t>(i)] = state.dryInput[static_cast<std::size_t>(c)][static_cast<std::size_t>(i)] = std::isfinite(sample) ? sample : 0.0f;
             }
+        // Keep LR dry timelines independent of the spectral processing basis.
+        if (state.midSide && count == 2)
+            for (int i = 0; i < size; ++i)
+            {
+                const auto l = state.input[0][static_cast<std::size_t>(i)], r = state.input[1][static_cast<std::size_t>(i)];
+                state.input[0][static_cast<std::size_t>(i)] = 0.5f * (l + r);
+                state.input[1][static_cast<std::size_t>(i)] = 0.5f * (l - r);
+            }
+        std::array<aura::SpectralSettings, 2> channelSettings { settings, settings };
+        const auto displayChannel = state.midSide && route == 2 && count == 2 ? 1 : 0;
         const juce::dsp::AudioBlock<const float> input(pointers.data(), 2, static_cast<std::size_t>(size));
         auto& current = *state.paths[static_cast<std::size_t>(state.active)];
-        current.process(input, count, settings, &spectrumFifo);
+        current.process(input, count, channelSettings, &spectrumFifo, displayChannel);
         auto* pending = state.pending >= 0 ? state.paths[static_cast<std::size_t>(state.pending)].get() : nullptr;
-        if (pending != nullptr) pending->process(input, count, settings, nullptr);
+        if (pending != nullptr) pending->process(input, count, channelSettings, nullptr);
         for (int i = 0; i < size; ++i)
         {
             const auto wetMix = mixSmooth.getNextValue(), gain = gainSmooth.getNextValue(), fade = state.nextFade();
             const auto resolutionGain = state.nextResolutionGain();
+            const auto midWeight = midSmooth.getNextValue(), sideWeight = sideSmooth.getNextValue(), delta = deltaSmooth.getNextValue();
+            std::array<float, 2> dry {}, wet {};
             for (int c = 0; c < count; ++c)
             {
                 const auto channel = static_cast<std::size_t>(c);
+                for (int bank = 0; bank < 2; ++bank)
+                {
+                    const auto sample = state.dryDelay[static_cast<std::size_t>(bank)][channel].process(state.dryInput[channel][static_cast<std::size_t>(i)]);
+                    if (bank == ProcessingState::bank(state.active)) dry[channel] = sample;
+                }
                 const auto a = current.sample(c, i), b = pending != nullptr ? pending->sample(c, i) : a;
-                std::array<float, 2> dryBanks {};
-                for (std::size_t bank = 0; bank < dryBanks.size(); ++bank) dryBanks[bank] = state.dryDelay[bank][channel].process(state.input[channel][static_cast<std::size_t>(i)]);
-                const auto dry = dryBanks[static_cast<std::size_t>(ProcessingState::bank(state.active))];
-                const auto wet = a + fade * (b - a);
-                buffer.setSample(c, offset + i, (dry + wetMix * (wet - dry)) * gain * resolutionGain);
+                wet[channel] = a + fade * (b - a);
+            }
+            if (state.midSide)
+            {
+                const auto dryMid = count == 2 ? 0.5f * (dry[0] + dry[1]) : dry[0];
+                const auto drySide = count == 2 ? 0.5f * (dry[0] - dry[1]) : 0.0f;
+                const auto mid = dryMid + midWeight * (wet[0] - dryMid);
+                const auto side = count == 2 ? drySide + sideWeight * (wet[1] - drySide) : 0.0f;
+                wet = { mid + side, mid - side };
+            }
+            for (int c = 0; c < count; ++c)
+            {
+                const auto channel = static_cast<std::size_t>(c);
+                // Delta is the selected wet/dry result minus aligned dry,
+                // before gain. Subtract before the resolution fade so a basis
+                // change cannot leak a negative dry signal into delta audition.
+                buffer.setSample(c, offset + i, ((1.0f - delta) * dry[channel] + wetMix * (wet[channel] - dry[channel])) * gain * resolutionGain);
             }
             const auto l = count > 0 ? buffer.getSample(0, offset + i) : 0.0f, r = count > 1 ? buffer.getSample(1, offset + i) : 0.0f;
             metering.process(l, r, count); state.analyser.process(l, r, count, outputSpectrumFifo);
@@ -338,6 +405,7 @@ void AuraAudioProcessor::process(juce::AudioBuffer<float>& buffer, bool bypassed
         state.hostPosition += static_cast<std::uint64_t>(size); state.finishChunk(latencyRequest, latencyAcknowledged);
         activePath.store(state.active, std::memory_order_relaxed);
         processingTransition.store(state.transitioning(), std::memory_order_relaxed);
+        activeMidSide.store(state.midSide, std::memory_order_relaxed); spatialTransition.store(state.spatialStage != ProcessingState::SpatialStage::normal, std::memory_order_relaxed);
     }
 }
 juce::AudioProcessorEditor* AuraAudioProcessor::createEditor() { return new AuraAudioProcessorEditor(*this); }
@@ -358,7 +426,7 @@ void AuraAudioProcessor::setStateInformation(const void* data, int size)
         const auto modeState = state.getChildWithProperty("id", "oversamplingMode");
         const auto canonicalMode = modeState.isValid() ? juce::jlimit(0, 2, static_cast<int>(modeState.getProperty("value", 0)))
             : (static_cast<float>(state.getChildWithProperty("id", "oversampling").getProperty("value", 0.0f)) > 0.5f ? 2 : 0);
-        for (auto* id : { "transientPreserve", "formantPreserve", "scaleTonic", "transientSensitivity", "transientBypass", "formantShift", "formantTension", "outputGain", "outputMute", "soloWet", "globalBypass", "oversampling", "oversamplingMode", "processingQuality", "realTimeMode" })
+        for (auto* id : { "transientPreserve", "formantPreserve", "scaleTonic", "transientSensitivity", "transientBypass", "formantShift", "formantTension", "outputGain", "outputMute", "soloWet", "globalBypass", "oversampling", "oversamplingMode", "processingQuality", "realTimeMode", "channelMode", "midAmount", "sideAmount", "deltaListen" })
         {
             if (!state.getChildWithProperty("id", id).isValid())
             {

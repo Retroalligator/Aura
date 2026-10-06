@@ -44,7 +44,7 @@ AURA — SPECTRAL HARMONY
 
 Free software under GNU AGPL version 3. See LICENSE and THIRD_PARTY_NOTICES.md.
 Project and complete corresponding source, including the pinned JUCE dependency:
-https://github.com/Retroalligator/Aura/releases/tag/v1.6.0
+https://github.com/Retroalligator/Aura/releases/tag/v2.0.0
 
 Drag Aura.vst3 to “Install VST3 Here” for VST3 hosts.
 Drag Aura.component to “Install AU Here” for Logic Pro and AU hosts.
@@ -65,8 +65,10 @@ Lush Pad Sweetener, or Drum Transient Preserver. An asterisk marks edited settin
 Amount sets the pitch pull; Mix blends latency-aligned dry and wet audio.
 TRANSIENTS PRESERVE protects detected percussion; FORMANTS PRESERVE restores
 the spectral envelope. THROAT and TENSION adjust envelope shape and detail.
-Output gain, Mix, Mute and processed Solo feed the POST analyzer and meter.
-LUFS is momentary (400 ms); sample peak is held over 400 ms.
+Choose Stereo, Mid only, Side only, or Mid + Side in the lower rack.
+Mid/Side blends independently scale the effect on the centre and width.
+LISTEN DELTA auditions selected processing minus latency-aligned dry,
+before output gain; global Mix scales the difference.
 Global BYPASS restores aligned dry at unity gain.
 Visualizer colors grow more saturated as Amount increases.
 Open Processing Settings with the gear or oversampling button. Choose 1x, 2x or
@@ -90,8 +92,8 @@ mkdir -p "$STAGE/.background"
 cp "$ROOT/Packaging/background.svg" "$STAGE/.background/background.svg"
 cp "$ROOT/Packaging/background.png" "$STAGE/.background/background.png"
 cp "$ROOT/Packaging/background.svg" "$STAGE/Aura — Installation Guide.svg"
-DMG="$DIST/Aura-1.6.0-Universal.dmg"
-TEMP_DMG="$DIST/.Aura-1.6.0-Universal.writable.dmg"
+DMG="$DIST/Aura-2.0.0-Universal.dmg"
+TEMP_DMG="$DIST/.Aura-2.0.0-Universal.writable.dmg"
 rm -f "$TEMP_DMG"
 hdiutil create -volname "Aura · Spectral Harmony" -srcfolder "$STAGE" -fs HFS+ -format UDRW "$TEMP_DMG"
 # Verify on the image filesystem as well as the staging filesystem.

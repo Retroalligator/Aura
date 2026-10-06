@@ -25,7 +25,7 @@ public:
         qualityAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(p.parameters, "processingQuality", quality);
         quality.onChange = [this] { refresh(); };
         reducedMotion.setTitle("Reduced motion"); reducedMotion.setClickingTogglesState(true);
-        reducedMotion.setTooltip("Disable particle trails and transient flashes; retain spectrum and meters.");
+        reducedMotion.setTooltip("Disable particle trails and transient flashes; retain the main spectrum.");
         reducedMotion.onClick = [this] { if (onReducedMotion) onReducedMotion(reducedMotion.getToggleState()); };
         reset.setTitle("Reset processing to Default"); reset.onClick = [this] { processor.setCurrentProgram(0); refresh(); };
         done.setTitle("Close processing settings"); done.onClick = [this] { if (onClose) onClose(); };
