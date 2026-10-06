@@ -327,3 +327,10 @@ Meter background: [EBU loudness metering](https://tech.ebu.ch/loudness/) and
 [EBU Tech 3341](https://tech.ebu.ch/docs/tech/tech3341.pdf). The signal suite checks
 stereo 1 kHz loudness at 44.1, 48, 96, and 192 kHz; it does not constitute full
 EBU R128 certification.
+
+Publishing a tagged GitHub release starts `.github/workflows/release.yml`. It
+builds the Universal 2 macOS DMG and Windows x64 setup/standalone files, runs
+regressions, checks the packaged AU and Windows install/uninstall, then uploads
+all installers, complete corresponding source (with pinned JUCE), CI evidence,
+and SHA-256 checksums. Only the final publish job receives repository write
+permission. Unsigned development installers remain marked as previews.

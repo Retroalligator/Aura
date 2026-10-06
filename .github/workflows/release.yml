@@ -1,0 +1,105 @@
+name: Build and publish release installers
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag (for example v1.5.0)
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+env:
+  AURA_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+jobs:
+  macos:
+    runs-on: macos-15-intel
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ env.AURA_TAG }}
+      - name: Build, test and package Universal 2 AU and VST3
+        run: ./build_and_package.sh
+      - name: Validate packaged Audio Unit
+        run: |
+          set -euo pipefail
+          mkdir -p release-evidence "$HOME/Library/Audio/Plug-Ins/Components"
+          mount="$RUNNER_TEMP/aura-image"
+          mkdir -p "$mount"
+          hdiutil attach dist/Aura-*-Universal.dmg -readonly -nobrowse -mountpoint "$mount"
+          trap 'hdiutil detach "$mount"' EXIT
+          ditto --norsrc --noextattr "$mount/Aura.component" "$HOME/Library/Audio/Plug-Ins/Components/Aura.component"
+          codesign --verify --deep --strict "$HOME/Library/Audio/Plug-Ins/Components/Aura.component"
+          auval -v aufx Aura AS01 > release-evidence/auval-macos-intel.txt 2>&1
+          cat release-evidence/auval-macos-intel.txt
+          cp build-release/Testing/Temporary/LastTest.log release-evidence/ctest-macos-intel.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: Aura-release-macOS
+          path: |
+            dist/*
+            release-evidence/*
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ env.AURA_TAG }}
+      - name: Build, test and package Windows x64
+        shell: pwsh
+        run: ./build_windows.ps1
+      - name: Install and uninstall smoke test
+        shell: pwsh
+        run: ./Packaging/windows/test_install.ps1 -BuildDir "$PWD/build-windows" -DistDir "$PWD/dist"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: Aura-release-Windows
+          path: |
+            dist/*
+            build-windows/Testing/Temporary/LastTest.log
+  publish:
+    needs: [macos, windows]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ env.AURA_TAG }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          pattern: Aura-release-*
+          path: payloads
+      - name: Bundle complete corresponding source and publish verified assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          [[ "$AURA_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          version="${AURA_TAG#v}"
+          test "$(sed -n 's/^project(Aura VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)" = "$version"
+          mkdir -p dist "complete-source/Aura-$version/vendor/JUCE"
+          find payloads -type f \( -name '*.dmg' -o -name '*.exe' -o -name '*.zip' \) -exec cp '{}' dist/ \;
+          test -f "dist/Aura-$version-Universal.dmg"
+          test -f "dist/Aura-$version-Windows-x64-Setup.exe"
+          test -f "dist/Aura-$version-Windows-x64.exe"
+          test -f "dist/Aura-$version-Windows-x64.zip"
+          git archive HEAD | tar -x -C "complete-source/Aura-$version"
+          curl --fail --location --retry 3 https://codeload.github.com/juce-framework/JUCE/tar.gz/91ad83ae34a81e0833b1a2b0866f54846370ae53 -o "$RUNNER_TEMP/juce-source.tar.gz"
+          echo "04f8d5055382582c757be9da069ea98338005f98248facd9c2804435ac853e70  $RUNNER_TEMP/juce-source.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/juce-source.tar.gz" -C "complete-source/Aura-$version/vendor/JUCE" --strip-components=1
+          tar -czf "dist/Aura-$version-complete-source.tar.gz" -C complete-source "Aura-$version"
+          mkdir -p evidence
+          find payloads -type f \( -name '*.txt' -o -name '*.log' \) -exec cp '{}' evidence/ \;
+          tar -czf "dist/Aura-$version-CI-validation.tar.gz" -C evidence .
+          (cd dist && sha256sum *.dmg *.exe *.zip *.tar.gz > SHA256SUMS.txt)
+          gh release upload "$AURA_TAG" dist/* --repo "$GITHUB_REPOSITORY"

@@ -1,0 +1,168 @@
+8192 real/complex cepstral max error 4.76837e-07
+16384 real/complex cepstral max error 2.38419e-06
+32768 real/complex cepstral max error 2.38419e-06
+PASS real-only cepstrum matches complex reference at native, 2x and 4x sizes
+PASS scale masks
+PASS A440 target mapping
+PASS empty mask maps to identity
+PASS tonic rotates preset and custom intervals into absolute pitch classes
+PASS all twelve tonics preserve interval count and empty custom scales
+Tonic C / D: 365 Hz -> 349.23 / 369.994 Hz
+PASS automatable tonic changes actual processor snapping targets
+PASS Solo auditions processed audio while retaining the dry Mix setting
+PASS factory presets are exposed as host programs
+PASS all factory sounds apply and round-trip their complete state and identity
+PASS edited factory state is marked modified
+PASS invalid factory program selection preserves settings
+1x / High prepared 1 kHz aligned error 7.76145e-08, stereo polarity error 0, host latency 16445
+PASS each prepared profile reconstructs aligned stereo audio across 1537-sample chunks
+2x / Standard prepared 1 kHz aligned error 0.000123751, stereo polarity error 0, host latency 16445
+PASS each prepared profile reconstructs aligned stereo audio across 1537-sample chunks
+2x / High prepared 1 kHz aligned error 2.99215e-06, stereo polarity error 0, host latency 16445
+PASS each prepared profile reconstructs aligned stereo audio across 1537-sample chunks
+4x / Standard prepared 1 kHz aligned error 0.0002702, stereo polarity error 0, host latency 16445
+PASS each prepared profile reconstructs aligned stereo audio across 1537-sample chunks
+4x / High prepared 1 kHz aligned error 7.05983e-05, stereo polarity error 0, host latency 16445
+PASS each prepared profile reconstructs aligned stereo audio across 1537-sample chunks
+Live -> 2x / Standard 1 kHz continuity error 0.000123751, active path 1
+PASS live profile changes finish priming and crossfading with continuous stereo audio and fixed latency
+Live -> 2x / High 1 kHz continuity error 0.000123751, active path 2
+PASS live profile changes finish priming and crossfading with continuous stereo audio and fixed latency
+Live -> 4x / Standard 1 kHz continuity error 0.0002702, active path 3
+PASS live profile changes finish priming and crossfading with continuous stereo audio and fixed latency
+Live -> 4x / High 1 kHz continuity error 0.0002702, active path 4
+PASS live profile changes finish priming and crossfading with continuous stereo audio and fixed latency
+Live -> 1x / High 1 kHz continuity error 7.05983e-05, active path 0
+PASS live profile changes finish priming and crossfading with continuous stereo audio and fixed latency
+PASS legacy boolean and canonical mode automation use the most recent host write
+PASS repeated legacy true overrides UI 1x when the stored boolean was already true
+PASS repeated canonical 1x overrides legacy 4x when the stored mode was already 1x
+PASS restoring Vocal Magic's effective 4x mode clears modified status despite a stale legacy boolean
+PASS each mode and quality combination recalls its requested settings and prepared processing path
+PASS each mode and quality combination recalls its requested settings and prepared processing path
+PASS each mode and quality combination recalls its requested settings and prepared processing path
+PASS each mode and quality combination recalls its requested settings and prepared processing path
+PASS each mode and quality combination recalls its requested settings and prepared processing path
+PASS each mode and quality combination recalls its requested settings and prepared processing path
+PASS v1.4 boolean false recalls 1x High without new parameter IDs
+PASS v1.4 boolean true recalls 4x High without new parameter IDs
+PASS post analyzer calibrates a mono bin-centered tone
+PASS post analyzer includes right-only stereo audio
+PASS post analyzer retains opposite-polarity stereo energy
+PASS sample peak retains brief impulses across GUI frame intervals
+PASS sample peak window releases after silence
+K-weighted stereo 1 kHz 44100 Hz: -22.9905 LUFS
+PASS momentary LUFS and RMS agree with the stereo 1 kHz reference
+PASS momentary loudness releases to silence after its 400 ms window
+K-weighted stereo 1 kHz 48000 Hz: -22.9933 LUFS
+PASS momentary LUFS and RMS agree with the stereo 1 kHz reference
+PASS momentary loudness releases to silence after its 400 ms window
+K-weighted stereo 1 kHz 96000 Hz: -23.0106 LUFS
+PASS momentary LUFS and RMS agree with the stereo 1 kHz reference
+PASS momentary loudness releases to silence after its 400 ms window
+K-weighted stereo 1 kHz 192000 Hz: -23.0203 LUFS
+PASS momentary LUFS and RMS agree with the stereo 1 kHz reference
+PASS momentary loudness releases to silence after its 400 ms window
+PASS sliding frequency median matches the reference across duplicates and clamped edges
+PASS HPSS classifies a broadband time-local hit
+PASS HPSS classifies a persistent narrow harmonic
+PASS HPSS soft-mask tie and silence are finite
+Cepstral full/half log-envelope error 9.53674e-07 / 9.53674e-07
+PASS cepstral lifter restores the original envelope and scales intensity
+Protected transients 44100 Hz max error 1.36191e-08
+PASS PUNCH 100 reconstructs isolated transients without phase-vocoder smearing
+PASS PUNCH crossfades the sweetened percussion and original-phase bypass
+Protected transients 48000 Hz max error 1.36191e-08
+PASS PUNCH 100 reconstructs isolated transients without phase-vocoder smearing
+PASS PUNCH crossfades the sweetened percussion and original-phase bypass
+Protected transients 96000 Hz max error 1.36191e-08
+PASS PUNCH 100 reconstructs isolated transients without phase-vocoder smearing
+PASS PUNCH crossfades the sweetened percussion and original-phase bypass
+Protected transients 192000 Hz max error 1.36191e-08
+PASS PUNCH 100 reconstructs isolated transients without phase-vocoder smearing
+PASS PUNCH crossfades the sweetened percussion and original-phase bypass
+PASS THROAT zero reports no envelope correction
+Synthetic vowel log-envelope RMS error 0.0890999 -> 0.0568923
+PASS THROAT reduces envelope displacement in the complete HPSS/snapping pipeline
+Unsplit vowel log-envelope RMS error 0.128919 -> 0.0822409
+PASS THROAT preserves the envelope when PUNCH is zero
+PASS Throat shape changes timbre even when pitch Amount is zero
+PASS Tension changes the envelope detail applied to harmonic audio
+PASS FIFO carries a finite positive input formant envelope
+PASS FIFO transient events and PUNCH energy track preserved hits
+PASS PUNCH zero disables bypass telemetry and transient flashes
+Sensitivity low/high preserved energy 0.0783879 / 0.923265
+PASS Sensitivity changes percussive routing on sustained broadband material
+Identity 44100 Hz max error 1.78814e-07
+PASS Hann OLA reconstructs delayed input
+Identity 48000 Hz max error 1.78814e-07
+PASS Hann OLA reconstructs delayed input
+Identity 96000 Hz max error 1.78814e-07
+PASS Hann OLA reconstructs delayed input
+Identity 192000 Hz max error 1.78814e-07
+PASS Hann OLA reconstructs delayed input
+Offset frame grid OLA error 1.19209e-07
+PASS half-hop frame offset reconstructs startup and hop-boundary impulses after reset
+PASS impulse STFT/HPSS latency is exactly 16384 samples
+Snapped 430 Hz -> 439.999 Hz, RMS 0.261126
+PASS sine snaps toward enabled A with usable gain
+Default preservation tone 439.999 Hz, RMS 0.277942
+PASS harmonic snapping remains active with both preservation controls at 100
+PASS half amount interpolates pitch logarithmically
+Out-of-range steady/startup max error 6.25849e-07 / 0.0100268
+PASS out-of-range steady tone is preserved with startup leakage below 3% of input peak
+PASS crossed boundaries produce the same ordered range
+PASS empty custom scale preserves audio
+PASS processor reports STFT/HPSS plus oversampling filter latency
+PASS stereo channel isolation and aligned dry
+PASS mix zero delivers exact delayed dry
+PASS output gain applies the dB gain to aligned audio
+PASS post spectrum and meter follow actual output controls
+PASS Mute produces silence
+PASS post spectrum and meter follow actual output controls
+PASS global Bypass restores aligned dry independently of gain and Mute
+PASS post spectrum and meter follow actual output controls
+PASS wet/dry latency stays aligned across sample rates and non-hop block sizes
+PASS wet/dry latency stays aligned across sample rates and non-hop block sizes
+PASS wet/dry latency stays aligned across sample rates and non-hop block sizes
+PASS wet/dry latency stays aligned across sample rates and non-hop block sizes
+PASS wet/dry latency stays aligned across sample rates and non-hop block sizes
+PASS wet/dry latency stays aligned across sample rates and non-hop block sizes
+PASS wet/dry latency stays aligned across sample rates and non-hop block sizes
+PASS wet/dry latency stays aligned across sample rates and non-hop block sizes
+PASS wet/dry latency stays aligned across sample rates and non-hop block sizes
+PASS wet/dry latency stays aligned across sample rates and non-hop block sizes
+PASS wet/dry latency stays aligned across sample rates and non-hop block sizes
+PASS wet/dry latency stays aligned across sample rates and non-hop block sizes
+PASS wet/dry latency stays aligned across sample rates and non-hop block sizes
+PASS wet/dry latency stays aligned across sample rates and non-hop block sizes
+PASS wet/dry latency stays aligned across sample rates and non-hop block sizes
+PASS wet/dry latency stays aligned across sample rates and non-hop block sizes
+PASS silence and non-finite input do not produce audio or cepstral noise
+PASS PUNCH automation settles to a fully protected endpoint
+PASS APVTS state round trip
+PASS v1.2 preservation state round trip
+PASS tonic, output and formant pod controls serialize through APVTS
+PASS v1.0 state supplies v1.2 defaults
+Legacy defaults tonic/gain/shape 0 / 0 / 0
+PASS legacy states restore C tonic and neutral new output/shape controls
+PASS v1.0 states default to native processing with High resampling quality available
+PASS invalid state leaves parameters intact
+PASS FIFO overflow drops new frames and drains safely
+PASS FIFO drains latest curve while retaining brief preservation events
+1x / High first/prepared callbacks C++ allocations 0, formant correction 0.185662
+PASS each profile processes its first callback and active FFT/HPSS/cepstral path without C++ heap allocations
+2x / Standard first/prepared callbacks C++ allocations 0, formant correction 0.239284
+PASS each profile processes its first callback and active FFT/HPSS/cepstral path without C++ heap allocations
+2x / High first/prepared callbacks C++ allocations 0, formant correction 0.363619
+PASS each profile processes its first callback and active FFT/HPSS/cepstral path without C++ heap allocations
+4x / Standard first/prepared callbacks C++ allocations 0, formant correction 0.431706
+PASS each profile processes its first callback and active FFT/HPSS/cepstral path without C++ heap allocations
+4x / High first/prepared callbacks C++ allocations 0, formant correction 0.480214
+PASS each profile processes its first callback and active FFT/HPSS/cepstral path without C++ heap allocations
+PASS no C++ heap allocations through all live mode/quality transitions and host bypass callbacks
+PASS all five profiles settle during the 1125 timed callbacks with fixed host latency
+Stereo processing: 1.82291 seconds for 12 seconds of audio
+512-sample callback p99/max: 7.10658 / 7.238 ms (48 kHz budget 10.6667 ms)
+PASS automation/bypass output remains finite
+0 failures
