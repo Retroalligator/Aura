@@ -8,6 +8,9 @@
 
 This is a development release. macOS installers are ad-hoc signed and not
 notarized; Windows executables are unsigned. See VALIDATION.md for actual checks.
+Windows mode-change callbacks exceeded the 512-sample / 48 kHz deadline on the
+initial CI runner; start with 1x and check your host CPU/buffer settings. See
+[the Windows evidence](Validation/public-release/WINDOWS.md).
 
 
 An open-source macOS AU v2 / VST3 and Windows x64 VST3 / standalone spectral harmony effect built with C++20 and JUCE 8.0.15.
