@@ -53,8 +53,8 @@ AuraAudioProcessorEditor::AuraAudioProcessorEditor(AuraAudioProcessor& p)
     { addAndMakeVisible(buttons[i]); buttons[i]->setClickingTogglesState(true); buttonAttachments[i] = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(p.parameters, boolIds[i], *buttons[i]); }
     power.getProperties().set("powerButton", true); power.setTitle("Bypass Aura"); bypass.setTitle("Bypass Aura");
     transientBypass.setTooltip("Disable transient preservation and send percussion through sweetening"); mute.setTitle("Mute output"); solo.setTitle("Solo processed signal"); solo.setTooltip("Audition 100% wet; retain the Mix setting for returning to the blend");
-    addAndMakeVisible(oversampling); oversampling.setTitle("Open oversampling settings");
-    oversampling.setTooltip("Choose 1x, 2x or 4x oversampling and filter quality in Processing Settings.");
+    addAndMakeVisible(oversampling); oversampling.setTitle("Open processing settings");
+    oversampling.setTooltip("Choose Real-time or Studio analysis, 1x, 2x or 4x oversampling, and filter quality in Processing Settings.");
     oversampling.onClick = [this] { showSettings(!settings.isVisible()); };
     addAndMakeVisible(menu); addAndMakeVisible(scaleButton); addAndMakeVisible(customButton);
     scaleButton.onClick = [this] { chooseCustom(false); }; customButton.onClick = [this] { chooseCustom(true); };
@@ -78,6 +78,7 @@ AuraAudioProcessorEditor::AuraAudioProcessorEditor(AuraAudioProcessor& p)
         const auto osText = juce::String(1 << auraProcessor.getOversamplingMode()) + "x";
         if (oversampling.getButtonText() != osText) oversampling.setButtonText(osText);
         if (settings.isVisible()) settings.refresh();
+        repaint(37, getHeight() - 35, getWidth() - 212, 18);
         const auto custom = auraProcessor.parameters.getRawParameterValue("scaleMode")->load() > 6.5f;
         scaleButton.setToggleState(!custom, juce::dontSendNotification); customButton.setToggleState(custom, juce::dontSendNotification);
     };
@@ -129,8 +130,10 @@ void AuraAudioProcessorEditor::paint(juce::Graphics& g)
     g.setColour(aura::text); g.setFont(13); g.drawText("OUTPUT", outputPod.getX() + 13, outputPod.getY() + 9, 150, 18, juce::Justification::centredLeft);
     g.setColour(aura::muted); g.setFont(10); g.drawText("GAIN", outputPod.getX() + 17, outputPod.getBottom() - 22, 116, 16, juce::Justification::centred); g.drawText("MIX", outputPod.getRight() - 68, outputPod.getBottom() - 22, 53, 16, juce::Justification::centred);
     g.setColour(aura::muted); g.setFont(11); const auto rate = auraProcessor.getSampleRate();
-    const auto status = (rate > 0 ? juce::String(rate / 1000, 1) + " kHz" : "READY") + "     /     FLOAT 32     /     8192 FFT     /     " + juce::String(auraProcessor.getLatencySamples()) + " samples";
-    g.drawText(status, 37, getHeight() - 35, 650, 18, juce::Justification::centredLeft); g.setColour(aura::accent); g.fillEllipse(24, static_cast<float>(getHeight() - 29), 5, 5);
+    const auto activeMode = auraProcessor.isActiveRealTimeMode() ? "REAL-TIME" : "STUDIO";
+    const auto status = (rate > 0 ? juce::String(rate / 1000, 1) + " kHz" : "READY") + "     /     FLOAT 32     /     " + activeMode
+        + "     /     " + juce::String(auraProcessor.getAnalysisFftSize()) + " FFT     /     " + juce::String(auraProcessor.getLatencySamples()) + " samples";
+    g.drawText(status, 37, getHeight() - 35, getWidth() - 212, 18, juce::Justification::centredLeft); g.setColour(aura::accent); g.fillEllipse(24, static_cast<float>(getHeight() - 29), 5, 5);
 }
 void AuraAudioProcessorEditor::resized()
 {
@@ -139,7 +142,7 @@ void AuraAudioProcessorEditor::resized()
     oversampling.setBounds(getWidth() - 242, 38, 98, 27);
     power.setBounds(getWidth() - 119, 30, 38, 34); menu.setBounds(getWidth() - 70, 30, 35, 34);
     visualizer.setBounds(28, 90, width, waveHeight);
-    settings.setBounds(getWidth() - 410, 88, 382, 362);
+    settings.setBounds(getWidth() - 410, 88, 382, 424);
     const auto podY = 100 + waveHeight, podHeight = 186;
     constexpr std::array<float, 5> weights { 1, 1, 1.18f, 1, 1.5f }; const auto unit = static_cast<float>(width - 32) / 5.68f;
     int x = 28;

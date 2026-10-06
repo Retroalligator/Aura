@@ -1,5 +1,34 @@
 # Aura changes
 
+## 1.6.0
+
+- Added Real-time processing with a native 4096-point FFT and 1024-sample hops,
+  alongside the existing Studio 8192/2048 engine. Reported delay is reduced to
+  8253 samples in Real-time versus 16445 in Studio, including FIR alignment.
+- Added an accessible Real-time mode toggle in Processing Settings, requested
+  resolution descriptions, active FFT/latency status, and a dynamic editor footer.
+  Studio remains the default for new instances, factory programs, and older states.
+- Preallocated ten paths across the two resolution banks. Each bank offers native,
+  2x Standard/High, and 4x Standard/High processing with its own aligned dry delay.
+  Oversampling retains the analysis duration and frequency resolution within a bank.
+- Added a resolution handover that primes the incoming path, fades output out over
+  25 ms, reports new host latency through a 20 ms message-thread timer, commits the
+  new bank after acknowledgement, and fades back in over 25 ms. The switch includes
+  a brief silent hold. Factor/quality changes within one bank retain the 50 ms crossfade.
+- Appended `realTimeMode` with AU version hint 6 and a false default. Factory
+  programs now recall all 21 parameters; existing IDs and legacy oversampling
+  migration remain compatible. Resolution is a nonautomatable saved processing
+  preference intended to be selected before playback or a bounce; live UI changes
+  use the handover, while factor/quality choices remain automatable.
+- Added FFT-size/bin-count metadata to visualization frames and corrected the
+  main/rack spectrum mappings for the active resolution. The final-output analyzer
+  retains its 8192-point analysis.
+- Updated the product overview and linked the interface and processing settings
+  images for the GitHub page. Release asset links use v1.6.0.
+- Retained ad-hoc macOS signatures, unsigned Windows executables, and the existing
+  host/listening qualification limits. Earlier validation evidence remains tied to
+  its recorded version; see `VALIDATION.md` for current checks.
+
 ## 1.5.0
 
 - Coupled the main spectrum's color saturation to SWEETENING AMOUNT, with

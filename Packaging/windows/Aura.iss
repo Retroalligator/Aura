@@ -1,5 +1,5 @@
 #ifndef AuraVersion
-  #define AuraVersion "1.5.0"
+  #define AuraVersion "1.6.0"
 #endif
 #ifndef BuildDir
   #define BuildDir "..\..\build-windows"

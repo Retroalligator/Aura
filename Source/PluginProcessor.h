@@ -6,7 +6,7 @@
 #include "OutputMonitor.h"
 #include "FactoryPresets.h"
 
-class AuraAudioProcessor final : public juce::AudioProcessor, private juce::AudioProcessorParameter::Listener
+class AuraAudioProcessor final : public juce::AudioProcessor, private juce::AudioProcessorParameter::Listener, private juce::Timer
 {
 public:
     AuraAudioProcessor();
@@ -24,7 +24,7 @@ public:
     bool acceptsMidi() const override { return false; }
     bool producesMidi() const override { return false; }
     bool isMidiEffect() const override { return false; }
-    double getTailLengthSeconds() const override { return static_cast<double>(getLatencySamples() + aura::fftSize) / (getSampleRate() > 0 ? getSampleRate() : 48000.0); }
+    double getTailLengthSeconds() const override { return static_cast<double>(getLatencySamples() + getAnalysisFftSize()) / (getSampleRate() > 0 ? getSampleRate() : 48000.0); }
     int getNumPrograms() override { return static_cast<int>(aura::factoryPresets.size()); }
     int getCurrentProgram() override { return currentProgram.load(std::memory_order_relaxed); }
     void setCurrentProgram(int) override;
@@ -34,7 +34,10 @@ public:
     int getOversamplingMode() const noexcept { return requestedOversampling.load(std::memory_order_relaxed); }
     int getProcessingQuality() const noexcept { return juce::jlimit(0, 1, juce::roundToInt(quality->load(std::memory_order_relaxed))); }
     int getActiveProcessingPath() const noexcept { return activePath.load(std::memory_order_relaxed); }
-    bool isProcessingChangePending() const noexcept { const auto mode = getOversamplingMode(); return processingTransition.load(std::memory_order_relaxed) || getActiveProcessingPath() != (mode == 0 ? 0 : 1 + (mode - 1) * 2 + getProcessingQuality()); }
+    bool isRealTimeMode() const noexcept { return realTimeMode->load(std::memory_order_relaxed) > 0.5f; }
+    bool isActiveRealTimeMode() const noexcept { return getActiveProcessingPath() >= 5; }
+    int getAnalysisFftSize() const noexcept { return isActiveRealTimeMode() ? 4096 : 8192; }
+    bool isProcessingChangePending() const noexcept { const auto mode = getOversamplingMode(); return processingTransition.load(std::memory_order_relaxed) || getActiveProcessingPath() != ((isRealTimeMode() ? 5 : 0) + (mode == 0 ? 0 : 1 + (mode - 1) * 2 + getProcessingQuality())); }
     void setOversamplingMode(int);
     void getStateInformation(juce::MemoryBlock&) override;
     void setStateInformation(const void*, int) override;
@@ -45,6 +48,7 @@ public:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 private:
     void process(juce::AudioBuffer<float>&, bool bypassed) noexcept;
+    void timerCallback() override;
     void parameterValueChanged(int, float) override;
     void parameterGestureChanged(int, bool) override {}
     struct ProcessingState;
@@ -71,6 +75,9 @@ private:
     std::atomic<float>* soloWet = nullptr;
     std::atomic<float>* globalBypass = nullptr;
     std::atomic<float>* quality = nullptr;
+    std::atomic<float>* realTimeMode = nullptr;
+    // Resolution notifications run on the message thread, outside audio callbacks.
+    std::atomic<std::uint64_t> latencyRequest { 0 }, latencyAcknowledged { 0 };
     std::atomic<int> requestedOversampling { 0 }, activePath { 0 };
     std::atomic<bool> processingTransition { false };
     int legacyOversamplingIndex = -1;

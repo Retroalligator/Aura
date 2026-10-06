@@ -3,12 +3,16 @@
 #include "SpectralVisualizer.h"
 namespace
 {
-float bandValue(const std::array<float, aura::binCount>& data, float u, float rate)
+float bandValue(const std::array<float, aura::binCount>& data, float u, const aura::SpectrumFrame& frame)
 {
+    const auto rate = frame.sampleRate;
+    const auto size = frame.analysisFftSize;
+    const auto lastBin = juce::jlimit(0, aura::binCount - 1, frame.validBins - 1);
+    if (!(rate > 0) || !std::isfinite(rate) || size <= 0 || lastBin < 1) return 0;
     const auto centre = 20.0f * std::pow(1000.0f, u);
-    if (centre > rate * 0.5f) return 0;
-    const auto a = juce::jlimit(1, aura::binCount - 1, juce::roundToInt(centre * std::pow(1000.0f, -0.5f / 192) * aura::fftSize / rate));
-    const auto b = juce::jlimit(a, aura::binCount - 1, juce::roundToInt(centre * std::pow(1000.0f, 0.5f / 192) * aura::fftSize / rate));
+    if (centre > std::min(rate * 0.5f, static_cast<float>(lastBin) * rate / static_cast<float>(size))) return 0;
+    const auto a = juce::jlimit(1, lastBin, juce::roundToInt(centre * std::pow(1000.0f, -0.5f / 192) * static_cast<float>(size) / rate));
+    const auto b = juce::jlimit(a, lastBin, juce::roundToInt(centre * std::pow(1000.0f, 0.5f / 192) * static_cast<float>(size) / rate));
     float sum = 0;
     for (int i = a; i <= b; ++i) sum += data[static_cast<std::size_t>(i)] * data[static_cast<std::size_t>(i)];
     return std::sqrt(sum / static_cast<float>(b - a + 1));
@@ -55,29 +59,40 @@ float SpectralVisualizer::magnitudeY(float value) const
 void SpectralVisualizer::timerCallback()
 {
     colourAmount += (processor.parameters.getRawParameterValue("amount")->load() - colourAmount) * 0.14f;
+    const auto previousSize = frame.analysisFftSize, previousBins = frame.validBins;
+    const auto previousRate = frame.sampleRate;
     const auto fresh = processor.spectrumFifo.readLatest(frame);
     const auto freshPost = processor.outputSpectrumFifo.readLatest(post);
+    if (fresh && (frame.analysisFftSize != previousSize || frame.validBins != previousBins || std::abs(frame.sampleRate - previousRate) > 0.5f))
+    {
+        // Bin indices refer to different frequencies after a resolution or
+        // sample-rate change; release the old grid instead of blending it.
+        input.fill(0); output.fill(0); envelope.fill(0);
+        particles.fill({}); nextParticle = 0; flash = punch = throat = 0;
+    }
     const auto now = juce::Time::getMillisecondCounter();
     if (fresh) lastInputFrame = now;
     if (freshPost) lastPostFrame = now;
-    // The 8192-point analyser emits fewer frames than the 60 Hz painter.
+    // The analysers can emit fewer frames than the 60 Hz painter.
     // Hold its latest target between frames; only release on real silence
     // or when callbacks have stopped for at least three analysis hops.
-    const auto staleAfter = [](float rate) { return static_cast<std::uint32_t>(std::max(250.0f, 3000.0f * aura::hopSize / std::max(1.0f, rate))); };
-    const auto stale = now - lastInputFrame > staleAfter(frame.sampleRate);
-    if (now - lastPostFrame > staleAfter(post.sampleRate)) post.output.fill(0);
+    const auto staleAfter = [](const aura::SpectrumFrame& spectrum) { return static_cast<std::uint32_t>(std::max(250.0f, 750.0f * static_cast<float>(spectrum.analysisFftSize) / std::max(1.0f, spectrum.sampleRate))); };
+    const auto stale = now - lastInputFrame > staleAfter(frame);
+    if (now - lastPostFrame > staleAfter(post)) post.output.fill(0);
+    const auto validBins = static_cast<std::size_t>(juce::jlimit(0, aura::binCount, frame.validBins));
     for (std::size_t i = 0; i < input.size(); ++i)
     {
-        input[i] += ((stale ? 0 : frame.input[i]) - input[i]) * (!stale && frame.input[i] > input[i] ? 0.48f : 0.08f);
-        output[i] += ((stale ? 0 : frame.output[i]) - output[i]) * (!stale && frame.output[i] > output[i] ? 0.48f : 0.08f);
-        envelope[i] += ((stale ? 0 : frame.envelope[i]) - envelope[i]) * (stale ? 0.08f : 0.22f);
+        const auto valid = !stale && i < validBins;
+        input[i] += ((valid ? frame.input[i] : 0) - input[i]) * (valid && frame.input[i] > input[i] ? 0.48f : 0.08f);
+        output[i] += ((valid ? frame.output[i] : 0) - output[i]) * (valid && frame.output[i] > output[i] ? 0.48f : 0.08f);
+        envelope[i] += ((valid ? frame.envelope[i] : 0) - envelope[i]) * (valid ? 0.22f : 0.08f);
     }
     for (std::size_t i = 0; i < waveInput.size(); ++i)
     {
         const auto u = static_cast<float>(i) / 191;
-        waveInput[i] = bandValue(input, u, frame.sampleRate);
-        waveOutput[i] = bandValue(output, u, frame.sampleRate);
-        waveEnvelope[i] = bandValue(envelope, u, frame.sampleRate);
+        waveInput[i] = bandValue(input, u, frame);
+        waveOutput[i] = bandValue(output, u, frame);
+        waveEnvelope[i] = bandValue(envelope, u, frame);
     }
     flash = reducedMotion ? 0 : std::max(flash * 0.78f, fresh ? juce::jmin(1.0f, frame.transientHit * 4) : 0.0f);
     punch = std::max(punch * 0.88f, fresh ? frame.percussiveLevel : 0.0f);
@@ -164,8 +179,12 @@ void SpectralVisualizer::paint(juce::Graphics& g)
     if (hoverX >= r.getX() && hoverX <= r.getRight())
     {
         g.setColour(aura::text.withAlpha(0.3f)); g.drawVerticalLine(juce::roundToInt(hoverX), r.getY(), r.getBottom());
-        const auto hz = xFrequency(hoverX); const auto idx = static_cast<std::size_t>(juce::jlimit(0, aura::binCount - 1, juce::roundToInt(hz * aura::fftSize / frame.sampleRate)));
-        const auto label = hzText(hz) + "  /  " + juce::String(juce::Decibels::gainToDecibels(output[idx], -60.0f), 1) + " dB";
+        const auto hz = xFrequency(hoverX);
+        const auto lastBin = juce::jlimit(0, aura::binCount - 1, frame.validBins - 1);
+        const auto bin = hz * static_cast<float>(frame.analysisFftSize) / std::max(1.0f, frame.sampleRate);
+        const auto idx = static_cast<std::size_t>(juce::jlimit(0, lastBin, juce::roundToInt(bin)));
+        const auto magnitude = hz <= frame.sampleRate * 0.5f && bin <= static_cast<float>(lastBin) ? output[idx] : 0.0f;
+        const auto label = hzText(hz) + "  /  " + juce::String(juce::Decibels::gainToDecibels(magnitude, -60.0f), 1) + " dB";
         const auto box = juce::Rectangle<float>(juce::jlimit(r.getX(), r.getRight() - 160, hoverX - 80), r.getY() + 8, 160, 21);
         g.setColour(aura::panel.withAlpha(0.9f)); g.fillRoundedRectangle(box, 3); g.setColour(aura::text); g.drawText(label, box, juce::Justification::centred);
     }

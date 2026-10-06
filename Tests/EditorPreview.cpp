@@ -8,7 +8,7 @@ class Preview final : public juce::JUCEApplication, private juce::Timer
 {
 public:
     const juce::String getApplicationName() override { return "Aura Preview"; }
-    const juce::String getApplicationVersion() override { return "1.5.0"; }
+    const juce::String getApplicationVersion() override { return "1.6.0"; }
     bool moreThanOneInstanceAllowed() override { return false; }
     void initialise(const juce::String&) override
     {

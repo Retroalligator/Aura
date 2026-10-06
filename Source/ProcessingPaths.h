@@ -36,7 +36,7 @@ public:
 protected:
     std::array<std::array<float, processingChunkSize>, 2> output {};
 };
-template <int FactorOrder> class ResampledPath final : public ProcessingPath
+template <int FactorOrder, int BaseOrder = fftOrder> class ResampledPath final : public ProcessingPath
 {
     static constexpr int factor = 1 << FactorOrder;
 public:
@@ -52,7 +52,7 @@ public:
     }
     void restart(std::uint64_t hostPosition) noexcept override
     {
-        const auto offset = static_cast<int>((hostPosition + static_cast<std::uint64_t>(globalFrameOffset)) % hopSize);
+        const auto offset = static_cast<int>((hostPosition + static_cast<std::uint64_t>(globalFrameOffset)) % (1 << (BaseOrder - 2)));
         for (auto& channel : dsp) channel.prepare(sampleRate * factor, offset * factor);
         for (auto& delay : delays) delay.reset();
         resampler.reset();
@@ -76,13 +76,13 @@ public:
                 output[static_cast<std::size_t>(c)][i] = delays[static_cast<std::size_t>(c)].process(output[static_cast<std::size_t>(c)][i]);
     }
 private:
-    std::array<BasicSpectralProcessor<fftOrder + FactorOrder>, 2> dsp;
+    std::array<BasicSpectralProcessor<BaseOrder + FactorOrder, BaseOrder>, 2> dsp;
     juce::dsp::Oversampling<float> resampler;
     std::array<FixedDelay<256>, 2> delays;
     double sampleRate = 48000;
     int globalFrameOffset = 0;
 };
-class NativePath final : public ProcessingPath
+template <int BaseOrder = fftOrder> class BasicNativePath final : public ProcessingPath
 {
 public:
     int filterLatency() const noexcept override { return 0; }
@@ -94,7 +94,7 @@ public:
     }
     void restart(std::uint64_t hostPosition) noexcept override
     {
-        const auto offset = static_cast<int>((hostPosition + static_cast<std::uint64_t>(globalFrameOffset)) % hopSize);
+        const auto offset = static_cast<int>((hostPosition + static_cast<std::uint64_t>(globalFrameOffset)) % (1 << (BaseOrder - 2)));
         for (auto& channel : dsp) channel.prepare(sampleRate, offset);
         for (auto& delay : delays) delay.reset();
     }
@@ -109,9 +109,10 @@ public:
             }
     }
 private:
-    std::array<SpectralProcessor, 2> dsp;
+    std::array<BasicSpectralProcessor<BaseOrder, BaseOrder>, 2> dsp;
     std::array<FixedDelay<256>, 2> delays;
     double sampleRate = 48000;
     int globalFrameOffset = 0;
 };
+using NativePath = BasicNativePath<>;
 }

@@ -8,11 +8,13 @@
 #include <random>
 #include <chrono>
 #include <bit>
+#include <thread>
 
 namespace
 {
 std::atomic<bool> watchAllocations { false };
 std::atomic<int> allocations { 0 };
+std::thread::id allocationThread;
 int failures = 0;
 bool exact(float a, float b) { return std::bit_cast<std::uint32_t>(a) == std::bit_cast<std::uint32_t>(b); }
 void check(bool ok, const char* name)
@@ -31,6 +33,7 @@ constexpr std::array<ProcessingProfile, 5> processingProfiles {{
     { 2, 0, 3, "4x / Standard" }, { 2, 1, 4, "4x / High" }
 }};
 constexpr int expectedHostLatency = 16445;
+constexpr int expectedRealTimeLatency = 8253;
 void selectProfile(AuraAudioProcessor& p, const ProcessingProfile& profile)
 {
     p.setOversamplingMode(profile.mode); set(p, "processingQuality", static_cast<float>(profile.quality));
@@ -98,7 +101,7 @@ template <int Order> bool cepstralMatchesComplexReference()
     std::mt19937 random(351); std::uniform_real_distribution<float> distribution(0.001f, 1.0f);
     for (int k = 0; k < bins; ++k) (*magnitude)[static_cast<std::size_t>(k)] = k < aura::binCount && k % 7 != 0 ? distribution(random) : 0.0f;
     float maxError = 0;
-    const auto rate = 48000.0 * size / aura::fftSize;
+    const auto rate = Order < aura::fftOrder ? 48000.0 : 48000.0 * size / aura::fftSize;
     for (auto tension : { 0.0f, 0.5f, 1.0f })
     {
         real.prepare(rate, tension); real.extract(*magnitude, *envelope);
@@ -134,10 +137,209 @@ std::vector<float> renderPlugin(const std::vector<float>& audio, int root, float
     }
     return out;
 }
+void processWatched(AuraAudioProcessor& p, juce::AudioBuffer<float>& block, juce::MidiBuffer& midi, bool bypass = false)
+{
+    watchAllocations = true;
+    if (bypass) p.processBlockBypassed(block, midi); else p.processBlock(block, midi);
+    watchAllocations = false;
+}
+struct LatencyHost final : juce::AudioProcessorListener
+{
+    explicit LatencyHost(AuraAudioProcessor& processor, bool shouldReset) : p(processor), resetOnLatency(shouldReset) {}
+    void audioProcessorParameterChanged(juce::AudioProcessor*, int, float) override {}
+    void audioProcessorChanged(juce::AudioProcessor*, const ChangeDetails& details) override
+    {
+        if (!details.latencyChanged) return;
+        ++notifications;
+        offCallback = offCallback && !watchAllocations.load();
+        const auto realTime = p.isRealTimeMode();
+        latencyCorrect = latencyCorrect && p.getLatencySamples() == (realTime ? expectedRealTimeLatency : expectedHostLatency);
+        if (resetOnLatency)
+        {
+            // Some hosts reset synchronously inside their latency notification.
+            p.reset();
+            committedAfterReset = committedAfterReset && p.isActiveRealTimeMode() == realTime
+                && p.getAnalysisFftSize() == (realTime ? 4096 : 8192) && p.isProcessingChangePending();
+        }
+    }
+    AuraAudioProcessor& p;
+    bool resetOnLatency, offCallback = true, latencyCorrect = true, committedAfterReset = true;
+    int notifications = 0;
+};
+void realTimeRoundTrip(const ProcessingProfile& profile, int audition, bool resetOnLatency)
+{
+    AuraAudioProcessor p; selectProfile(p, profile); set(p, "amount", 0); set(p, "mix", audition == 1 ? 0.0f : 1.0f);
+    p.prepareToPlay(48000, 1537); juce::AudioBuffer<float> block(2, 1537); juce::MidiBuffer midi;
+    LatencyHost host(p, resetOnLatency); p.addListener(&host); int position = 0;
+    allocations = 0;
+    for (int n = 0; n < 40; ++n)
+    { fillOppositeTone(block, position); processWatched(p, block, midi, audition == 2); position += block.getNumSamples(); }
+    for (auto realTime : { true, false })
+    {
+        const auto oldLatency = p.getLatencySamples(); const auto beforeNotifications = host.notifications;
+        set(p, "realTimeMode", realTime ? 1.0f : 0.0f);
+        bool deferred = p.getLatencySamples() == oldLatency, finite = true; float peak = 0, jump = 0, previous = 0;
+        double steadyError = 0; float steadyPeak = 0;
+        const auto targetLatency = realTime ? expectedRealTimeLatency : expectedHostLatency;
+        for (int n = 0; n < 60; ++n)
+        {
+            fillOppositeTone(block, position); processWatched(p, block, midi, audition == 2);
+            if (n < 20) deferred = deferred && p.getLatencySamples() == oldLatency;
+            for (int i = 0; i < block.getNumSamples(); ++i)
+            {
+                const auto left = block.getSample(0, i), right = block.getSample(1, i);
+                finite = finite && std::isfinite(left) && std::isfinite(right) && std::abs(left + right) < 2.0e-5f;
+                peak = std::max(peak, std::max(std::abs(left), std::abs(right)));
+                if (n != 0 || i != 0) jump = std::max(jump, std::abs(left - previous));
+                previous = left;
+                if (n >= 45)
+                {
+                    const auto expected = 0.2 * std::sin(juce::MathConstants<double>::twoPi * 1000 * (position + i - targetLatency) / 48000);
+                    steadyError = std::max(steadyError, std::abs(left - expected)); steadyPeak = std::max(steadyPeak, std::abs(left));
+                }
+            }
+            position += block.getNumSamples();
+            // Offline audio can finish priming before the 20 ms processor timer
+            // is due. Yield once, then run the host acknowledgement off callback.
+            if (n == 20) juce::Thread::sleep(25);
+            if (n >= 20) juce::Timer::callPendingTimersSynchronously();
+        }
+        const auto expectedPath = profile.path + (realTime ? 5 : 0);
+        std::cout << "Live " << (realTime ? "Real-time" : "Studio") << " / " << profile.name << " / audition " << audition
+                  << (resetOnLatency ? " / host reset" : "") << ": latency " << p.getLatencySamples()
+                  << ", active path " << p.getActiveProcessingPath() << ", steady error " << steadyError << ", peak/jump " << peak << '/' << jump << '\n';
+        check(deferred && host.notifications == beforeNotifications + 1 && host.offCallback && host.latencyCorrect
+              && host.committedAfterReset && p.isRealTimeMode() == realTime && p.isActiveRealTimeMode() == realTime
+              && p.getActiveProcessingPath() == expectedPath && p.getAnalysisFftSize() == (realTime ? 4096 : 8192)
+              && p.getLatencySamples() == targetLatency && !p.isProcessingChangePending() && finite
+              && peak < 0.25f && jump < 0.05f && steadyPeak > 0.15f && steadyError < 0.002,
+              "live resolution changes acknowledge latency off callback and settle with bounded stereo wet/dry/bypass output");
+    }
+    p.removeListener(&host);
+    check(allocations == 0, "both live resolution changes and incoming-path restarts perform no callback C++ allocations");
+}
+void testRealTimeMode()
+{
+    check(cepstralMatchesComplexReference<12>(), "4096-point Real-time cepstrum matches the complex reference");
+    for (auto realTime : { false, true })
+        for (const auto& profile : processingProfiles)
+            for (auto rate : { 44100.0, 48000.0, 96000.0, 192000.0 })
+                for (auto blockSize : { 127, 1537 })
+                {
+                    AuraAudioProcessor p; selectProfile(p, profile); set(p, "realTimeMode", realTime ? 1.0f : 0.0f); set(p, "amount", 0);
+                    p.prepareToPlay(rate, blockSize); juce::AudioBuffer<float> block(2, blockSize); juce::MidiBuffer midi;
+                    const auto latency = realTime ? expectedRealTimeLatency : expectedHostLatency, fftSize = realTime ? 4096 : 8192;
+                    const auto impulseIndex = latency + 17, length = latency + fftSize * 2;
+                    std::vector<float> wet(static_cast<std::size_t>(length)); bool valid = true, finite = true;
+                    std::array<float, 3> passErrors {}; int peakOffset = 0; float peakValue = 0, earlyValue = 0; double impulseSum = 0;
+                    allocations = 0;
+                    for (int pass = 0; pass < 4; ++pass)
+                    {
+                        const auto mix = pass == 1 ? 0.37f : pass == 2 ? 0.0f : 1.0f;
+                        set(p, "mix", mix); p.reset(); float error = 0;
+                        for (int start = 0; start < length; start += blockSize)
+                        {
+                            block.clear();
+                            if (start <= 17 && start + blockSize > 17)
+                            { block.setSample(0, 17 - start, 1); block.setSample(1, 17 - start, -1); }
+                            processWatched(p, block, midi, pass == 3);
+                            for (int i = 0; i < blockSize && start + i < length; ++i)
+                            {
+                                const auto index = start + i; const auto left = block.getSample(0, i), right = block.getSample(1, i);
+                                finite = finite && std::isfinite(left) && std::isfinite(right) && std::abs(left + right) < 2.0e-5f;
+                                if (pass == 0) wet[static_cast<std::size_t>(index)] = left;
+                                else
+                                {
+                                    const auto dry = index == impulseIndex ? 1.0f : 0.0f;
+                                    const auto expected = pass == 1 ? mix * wet[static_cast<std::size_t>(index)] + (1 - mix) * dry : dry;
+                                    error = std::max(error, std::abs(left - expected));
+                                }
+                            }
+                        }
+                        if (pass == 0)
+                        {
+                            const auto peak = std::max_element(wet.begin(), wet.end(), [](float a, float b) { return std::abs(a) < std::abs(b); });
+                            const auto peakIndex = static_cast<int>(std::distance(wet.begin(), peak)); double sum = 0; float early = 0;
+                            for (int i = 0; i < length; ++i) { sum += wet[static_cast<std::size_t>(i)]; if (i < impulseIndex - 256) early = std::max(early, std::abs(wet[static_cast<std::size_t>(i)])); }
+                            // Oversampled wet impulses retain the filter response;
+                            // its centre and unity DC gain must align with dry.
+                            // The STFT's host-Nyquist cutoff has extended ringing,
+                            // unlike a finite FIR alone. Bound pre-ringing more
+                            // than 256 samples early to 0.05% of this unit impulse
+                            // (-66 dBFS), retaining the tighter native identity limit.
+                            const auto earlyLimit = profile.mode == 0 ? 2.0e-5f : 5.0e-4f;
+                            valid = valid && std::abs(peakIndex - impulseIndex) <= 1 && *peak > 0.5f && *peak < 1.02f
+                                && std::abs(sum - 1) < 0.01 && early < earlyLimit;
+                            peakOffset = peakIndex - impulseIndex; peakValue = *peak; impulseSum = sum; earlyValue = early;
+                        }
+                        else { valid = valid && error < 3.0e-5f; passErrors[static_cast<std::size_t>(pass - 1)] = error; }
+                    }
+                    std::cout << (realTime ? "Real-time" : "Studio") << " impulse / " << profile.name << " / " << rate << " Hz / " << blockSize
+                              << " samples: peak offset/value " << peakOffset << '/' << peakValue << ", sum/early " << impulseSum << '/' << earlyValue
+                              << ", blend/dry/bypass errors " << passErrors[0] << '/' << passErrors[1] << '/' << passErrors[2]
+                              << ", finite/allocations/path/latency " << finite << '/' << allocations.load() << '/' << p.getActiveProcessingPath() << '/' << p.getLatencySamples() << '\n';
+                    check(valid && finite && allocations == 0 && p.getLatencySamples() == latency && p.getAnalysisFftSize() == fftSize
+                          && p.isActiveRealTimeMode() == realTime && p.getActiveProcessingPath() == profile.path + (realTime ? 5 : 0),
+                          "all ten profiles align wet/dry and bypass impulses across rates/non-hop blocks without callback allocations");
+                }
+    for (const auto& profile : processingProfiles)
+    {
+        AuraAudioProcessor p; selectProfile(p, profile); set(p, "realTimeMode", 1); set(p, "amount", 0); p.prepareToPlay(48000, 1537);
+        juce::AudioBuffer<float> block(2, 1537); juce::MidiBuffer midi; aura::SpectrumFrame analysis, post; bool haveAnalysis = false, havePost = false;
+        for (int n = 0; n < 40; ++n)
+        {
+            fillOppositeTone(block, n * block.getNumSamples()); p.processBlock(block, midi);
+            haveAnalysis = p.spectrumFifo.readLatest(analysis) || haveAnalysis; havePost = p.outputSpectrumFifo.readLatest(post) || havePost;
+        }
+        bool valid = haveAnalysis && havePost;
+        for (const auto* frame : { &analysis, &post })
+        {
+            const auto& bins = frame == &analysis ? frame->input : frame->output;
+            const auto fftSize = frame == &analysis ? 4096 : 8192, validBins = fftSize / 2 + 1;
+            const auto peak = std::max_element(bins.begin(), bins.begin() + validBins);
+            const auto hz = static_cast<float>(std::distance(bins.begin(), peak)) * 48000 / static_cast<float>(fftSize);
+            valid = valid && frame->validBins == validBins && frame->analysisFftSize == fftSize && exact(frame->sampleRate, 48000)
+                && std::abs(hz - 1000) < 48000.0f / static_cast<float>(fftSize) && *peak > 0.15f && *peak < 0.205f;
+            for (auto k = static_cast<std::size_t>(validBins); k < bins.size(); ++k) valid = valid && exact(bins[k], 0);
+        }
+        check(valid, "Real-time FIFO identifies 2049 analysis bins, retains the 8192-point post analyzer, and calibrates the 1 kHz peaks");
+    }
+    for (auto realTime : { false, true })
+        for (int mode = 0; mode < 3; ++mode)
+            for (int quality = 0; quality < 2; ++quality)
+            {
+                AuraAudioProcessor p; p.setOversamplingMode(mode); set(p, "processingQuality", static_cast<float>(quality)); set(p, "realTimeMode", realTime ? 1.0f : 0.0f);
+                juce::MemoryBlock state; p.getStateInformation(state); set(p, "realTimeMode", realTime ? 0.0f : 1.0f);
+                p.setStateInformation(state.getData(), static_cast<int>(state.getSize())); p.prepareToPlay(48000, 1537);
+                const auto path = (mode == 0 ? 0 : 1 + (mode - 1) * 2 + quality) + (realTime ? 5 : 0);
+                check(p.isRealTimeMode() == realTime && p.isActiveRealTimeMode() == realTime && p.getOversamplingMode() == mode
+                      && p.getProcessingQuality() == quality && p.getActiveProcessingPath() == path
+                      && p.getLatencySamples() == (realTime ? expectedRealTimeLatency : expectedHostLatency),
+                      "all twelve resolution/mode/quality states recall the correct prepared bank and latency");
+            }
+    {
+        AuraAudioProcessor p; set(p, "realTimeMode", 1); auto legacy = p.parameters.copyState();
+        legacy.removeChild(legacy.getChildWithProperty("id", "realTimeMode"), nullptr);
+        juce::MemoryBlock state; auto xml = legacy.createXml(); juce::AudioProcessor::copyXmlToBinary(*xml, state);
+        p.setStateInformation(state.getData(), static_cast<int>(state.getSize())); p.prepareToPlay(48000, 1537);
+        check(!p.isRealTimeMode() && !p.isActiveRealTimeMode() && p.getAnalysisFftSize() == 8192 && p.getLatencySamples() == expectedHostLatency,
+              "older state missing Real-time mode restores Studio even when current mode was Real-time");
+        bool factoryValid = aura::parameterIds.size() == 21 && p.getParameters().size() == 21;
+        for (int program = 0; program < p.getNumPrograms(); ++program)
+        {
+            set(p, "realTimeMode", 1); const auto modified = p.isCurrentProgramModified(); p.setCurrentProgram(program);
+            factoryValid = factoryValid && modified && !p.isRealTimeMode() && !p.isCurrentProgramModified();
+        }
+        check(factoryValid, "all 21-parameter factory presets reset Real-time mode and report restored identity");
+    }
+    for (const auto& profile : processingProfiles)
+        for (int audition = 0; audition < 3; ++audition) realTimeRoundTrip(profile, audition, false);
+    realTimeRoundTrip(processingProfiles[4], 0, true);
+}
 }
 void* operator new(std::size_t bytes)
 {
-    if (watchAllocations.load(std::memory_order_relaxed)) ++allocations;
+    if (watchAllocations.load(std::memory_order_relaxed) && std::this_thread::get_id() == allocationThread) ++allocations;
     if (auto* p = std::malloc(bytes == 0 ? 1 : bytes)) return p;
     throw std::bad_alloc();
 }
@@ -150,8 +352,10 @@ void operator delete[](void* p, std::size_t) noexcept { std::free(p); }
 int main()
 {
     juce::ScopedJuceInitialiser_GUI init;
+    allocationThread = std::this_thread::get_id();
     check(cepstralMatchesComplexReference<aura::fftOrder>() && cepstralMatchesComplexReference<aura::fftOrder + 1>()
           && cepstralMatchesComplexReference<aura::fftOrder + 2>(), "real-only cepstrum matches complex reference at native, 2x and 4x sizes");
+    testRealTimeMode();
     check(aura::noteMask(0, 0) == 0xAB5 && aura::noteMask(7, 0x123) == 0x123, "scale masks");
     check(std::abs(aura::nearestNoteHz(430, 1 << 9) - 440) < 0.01f, "A440 target mapping");
     check(exact(aura::nearestNoteHz(430, 0), 430), "empty mask maps to identity");
@@ -277,7 +481,7 @@ int main()
     {
         AuraAudioProcessor p; p.setOversamplingMode(1); set(p, "processingQuality", 0);
         auto state = p.parameters.copyState();
-        for (auto* id : { "oversamplingMode", "processingQuality" }) state.removeChild(state.getChildWithProperty("id", id), nullptr);
+        for (auto* id : { "oversamplingMode", "processingQuality", "realTimeMode" }) state.removeChild(state.getChildWithProperty("id", id), nullptr);
         state.getChildWithProperty("id", "oversampling").setProperty("value", legacyEnabled ? 1.0f : 0.0f, nullptr);
         juce::MemoryBlock binary; auto xml = state.createXml(); juce::AudioProcessor::copyXmlToBinary(*xml, binary);
         p.setStateInformation(binary.getData(), static_cast<int>(binary.getSize())); p.prepareToPlay(48000, 1537);
@@ -638,7 +842,7 @@ int main()
           && std::abs(restored.parameters.getRawParameterValue("formantShift")->load() - 2.3f) < 1.0e-5f
           && std::abs(restored.parameters.getRawParameterValue("formantTension")->load() - 0.67f) < 1.0e-5f, "tonic, output and formant pod controls serialize through APVTS");
     auto legacy = processor.parameters.copyState();
-    for (auto* id : { "transientPreserve", "formantPreserve", "scaleTonic", "outputGain", "formantShift", "formantTension", "transientSensitivity", "transientBypass", "outputMute", "soloWet", "globalBypass", "oversampling", "oversamplingMode", "processingQuality" }) legacy.removeChild(legacy.getChildWithProperty("id", id), nullptr);
+    for (auto* id : { "transientPreserve", "formantPreserve", "scaleTonic", "outputGain", "formantShift", "formantTension", "transientSensitivity", "transientBypass", "outputMute", "soloWet", "globalBypass", "oversampling", "oversamplingMode", "processingQuality", "realTimeMode" }) legacy.removeChild(legacy.getChildWithProperty("id", id), nullptr);
     juce::MemoryBlock oldState; auto oldXml = legacy.createXml();
     juce::AudioProcessor::copyXmlToBinary(*oldXml, oldState);
     restored.setStateInformation(oldState.getData(), static_cast<int>(oldState.getSize()));

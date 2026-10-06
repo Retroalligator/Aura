@@ -1,23 +1,51 @@
-# Aura 1.5
+# Aura 1.6
+
+Aura is an open-source spectral sweetening and harmonic snapping effect built
+with C++20 and JUCE 8.0.15. It runs as Universal 2 AU/VST3 on macOS and x64
+VST3/standalone on Windows, under the AGPL-3.0-only license.
 
 ![Aura interface](docs/Aura-interface.png)
 
 *Native macOS editor shown with the silent synthetic test signal.*
 
-[Download installers and complete source](https://github.com/Retroalligator/Aura/releases/tag/v1.5.0)
+- **Tonic and scales:** choose any of the 12 root keys, select a scale, or toggle
+  notes on the custom keyboard. Custom intervals transpose with the root.
+- **Transient and formant preservation:** median HPSS and onset detection route
+  estimated percussion around pitch processing; cepstral envelopes preserve
+  broad timbre, with THROAT shape and TENSION controls.
+- **Sweetening:** AMOUNT pulls partials toward enabled notes and smoothly raises
+  the main wave, particle, and formant-curve color saturation.
+- **Interactive frequency range:** drag glowing LO-CUT/HI-CUT handles or use
+  LOW END/TOP END to set the sweetening boundaries.
+- **Output and monitoring:** latency-aligned Mix, output gain, Solo, Mute, and
+  Bypass; PRE/POST spectra, momentary LUFS, RMS, and sample-peak metering.
+- **Factory sounds and saved state:** five complete presets, edited-state
+  indicators, host automation for sound controls, and compatible parameter/state recall.
+- **Accessible controls and motion:** named dropdown choices, keyboard note
+  states, and Reduced motion for the spectrum and transient flashes.
+- **Oversampling:** choose 1x, 2x, or 4x and Standard/High anti-alias filter
+  quality; quality is disabled for native 1x processing.
+- **Real-time or Studio analysis:** Real-time uses 4096 host samples for faster
+  response and 8253 samples of reported delay; Studio uses 8192 host samples for
+  higher frequency detail and 16445 samples of delay. At 48 kHz, these are
+  171.9 ms and 342.6 ms respectively. The footer shows the active resolution and
+  latency. Changing resolution briefly fades the output while the host delay updates.
 
-- macOS: `Aura-1.5.0-Universal.dmg` includes Universal 2 AU and VST3 plugins.
-- Windows: `Aura-1.5.0-Windows-x64-Setup.exe` installs VST3 and an optional standalone app.
-- `Aura-1.5.0-Windows-x64.exe` is the standalone app; the portable ZIP also includes the VST3 bundle and notices.
+![Aura processing settings with Real-time mode](docs/Aura-settings.png)
+
+[Download installers and complete source](https://github.com/Retroalligator/Aura/releases/tag/v1.6.0)
+
+- macOS: `Aura-1.6.0-Universal.dmg` includes Universal 2 AU and VST3 plugins.
+- Windows: `Aura-1.6.0-Windows-x64-Setup.exe` installs VST3 and an optional standalone app.
+- `Aura-1.6.0-Windows-x64.exe` is the standalone app; the portable ZIP also includes the VST3 bundle and notices.
 
 This is a development release. macOS installers are ad-hoc signed and not
 notarized; Windows executables are unsigned. See VALIDATION.md for actual checks.
-Windows mode-change callbacks exceeded the 512-sample / 48 kHz deadline on the
-initial CI runner; start with 1x and check your host CPU/buffer settings. See
+The v1.5 Windows mode-change callbacks exceeded the 512-sample / 48 kHz deadline
+on the initial CI runner; start with 1x and check your host CPU/buffer settings. See
 [the Windows evidence](Validation/public-release/WINDOWS.md).
 
 
-An open-source macOS AU v2 / VST3 and Windows x64 VST3 / standalone spectral harmony effect built with C++20 and JUCE 8.0.15.
 Choose **ROOT KEY** beside **SCALE TYPE** in the SCALES pod to transpose any preset
 or custom scale through all 12 pitch classes, with A4 = 440 Hz. The keyboard highlights the resulting
 notes in gold and cyan. Clicking a key copies the current preset into Custom;
@@ -26,19 +54,27 @@ C is the default, preserving the meaning of older saved states.
 
 The header preset manager recalls **Default**, **Vocal Magic**, **808 Tuner**,
 **Lush Pad Sweetener**, and **Drum Transient Preserver**. Each factory program
-recalls all 20 parameters, including root, scale, range, output routing,
-oversampling factor, and resampling quality. An asterisk marks edits to the
+recalls all 21 parameters, including root, scale, range, output routing,
+analysis resolution, oversampling factor, and resampling quality. An asterisk marks edits to the
 selected program. The header's factor indicator and Settings button open
 **PROCESSING SETTINGS**; Power and the lower BYPASS button control the same
 bypass parameter.
 
-Processing Settings offers **1x**, **2x**, and **4x**, plus **Standard** or **High**
+Processing Settings offers **Real-time mode** (4096 FFT) or **Studio** (8192 FFT),
+**1x**, **2x**, and **4x**, plus **Standard** or **High**
 resampling filter quality. Standard uses shorter anti-alias filters; High uses
 steeper filters for greater alias rejection. Quality is disabled at 1x and its
 selection is retained for the next resampled mode. Reduced motion, Reset to
 Default, and Done are in the same panel. Changes apply when audio runs: the
 incoming path is primed before its output fades in, and the panel shows the
-pending status.
+pending status. Resolution changes update the actual reported host latency;
+oversampling and quality changes within a resolution retain its delay. Real-time
+is lower latency relative to Studio; it still buffers spectral audio and is not
+a zero-delay monitoring mode.
+Choose the resolution before playback or an offline bounce. It is a saved
+processing preference rather than an automatable sound control; a live UI change
+uses the fade and host-notification handover described below. Oversampling and
+filter quality remain automatable.
 
 Amount pulls spectral peaks toward the nearest enabled note and progressively
 increases the main visualizer's color saturation. Mix blends processed
@@ -68,6 +104,9 @@ The legacy `oversampling` Boolean retains version hint 4 and its off default;
 legacy automation still selects 1x or 4x. The appended `oversamplingMode` and
 `processingQuality` choices use version hint 5. States without a mode choice
 migrate the old Boolean to 1x or 4x, and missing quality defaults to High.
+The nonautomatable `realTimeMode` Boolean uses version hint 6 and defaults to false (Studio),
+including when missing from an older saved state. All factory programs also
+default to Studio.
 Factory program identity is stored alongside the parameter state; edited values
 remain intact when reopening a session.
 
@@ -91,7 +130,7 @@ ctest --test-dir build --output-on-failure
 Both `arm64` and `x86_64` are built by default, targeting macOS 11.0+.
 Bundles are in `build/Aura_artefacts/Release/AU` and `VST3`. The packaging script
 does a clean Release build, runs the tests, verifies both architectures, ad-hoc
-signs and verifies the bundles and disk image, and creates `dist/Aura-1.5.0-Universal.dmg`.
+signs and verifies the bundles and disk image, and creates `dist/Aura-1.6.0-Universal.dmg`.
 Override build paths with `AURA_BUILD_DIR` / `AURA_DIST_DIR`, and parallelism
 with `AURA_JOBS`. `AURA_STYLE_DMG=0` skips optional Finder styling in a headless
 session; the installation guide remains included.
@@ -134,9 +173,10 @@ arch -x86_64 auval -v aufx Aura AS01  # requires Rosetta
 ```
 
 In Logic Pro, verify Aura in Plug-in Manager, then insert it on an audio track.
-See `VALIDATION.md` for version-specific results and verification limits. The v1.5 release passes native and Rosetta regression/AU validation plus AU
-pluginval at strictness 10 with GUI tests enabled. Evidence from earlier releases
-applies to those recorded versions. Direct Logic playback has not been verified.
+See `VALIDATION.md` for version-specific results and verification limits. Evidence
+from earlier releases applies to those recorded versions; it does not establish
+v1.6 mode transitions, latency, or callback timing. Direct Logic playback has not
+been verified.
 Further FL Studio work was stopped at the user's request. Current host validation
 uses AU independently of that host; the VST3 payload is built and packaged.
 
@@ -153,18 +193,27 @@ Dependency licenses are preserved in `ThirdParty/` and the dependency source.
 
 ## Engine
 
-`SpectralProcessor` uses a periodic Hann analysis/synthesis window, an **8192-point
-complex FFT**, and **2048-sample hops** (75% overlap). Four window-square overlaps sum to 1.5, so
+`SpectralProcessor` uses a periodic Hann analysis/synthesis window with 75%
+overlap. Studio uses an **8192-point complex FFT** and **2048-sample hops** at
+native rate; Real-time uses **4096 points** and **1024-sample hops**.
+Four window-square overlaps sum to 1.5, so
 the synthesis gain is 2/3. HPSS stores nine magnitude/complex frames. A centred nine-frame temporal median
 estimates harmonic energy, and a 17-bin frequency median estimates percussive
 energy. Complementary squared soft masks split each bin. Four future frames add
-8192 host samples of lookahead to the 8192-sample STFT delay: **16384 samples**
-for the spectral engine. An additional 61 host samples align all five processing
-paths and dry audio with the longest FIR resampler delay. The processor reports **16445 samples total**
-(372.90 ms at 44.1 kHz; 342.60 ms at 48 kHz). This fixed delay is reported during
-construction and preparation, stays constant during automation, and aligns wet,
-percussive bypass, dry Mix, and host bypass. No host notification or latency
-change is performed inside the callback.
+8192 host samples of lookahead in Studio, or 4096 in Real-time. Combined with
+the respective STFT delay, the spectral engines delay audio by **16384** or
+**8192** host samples. An additional 61 host samples align each bank's processing
+paths and dry audio with the longest FIR resampler delay.
+
+| Resolution | Native FFT / hop | Reported delay | Delay at 48 kHz | Bin spacing at 48 kHz |
+| --- | --- | --- | --- | --- |
+| Studio | 8192 / 2048 | 16445 samples | 342.6 ms | 5.859375 Hz |
+| Real-time | 4096 / 1024 | 8253 samples | 171.9 ms | 11.71875 Hz |
+
+Wet, percussive bypass, dry Mix, and host bypass use the active bank's aligned
+delay. Oversampling, filter quality, and other automation keep this delay stable
+within a bank. Resolution changes report a new delay to the host from a processor
+message-thread timer, with no latency notification inside the audio callback.
 
 ```mermaid
 flowchart LR
@@ -197,24 +246,34 @@ pitched attacks, and sustained noise can share both masks. PUNCH 100 does not
 guarantee that every sample of an arbitrary drum recording is classified as
 percussive. The finite STFT/lookahead tail is reported to the host.
 
-At 2x the internal engine uses a 16384-point FFT and 4096-sample hops; at 4x it
-uses a 32768-point FFT and 8192-sample hops. The resamplers use one or two
-cascaded half-band FIR stages respectively. Both modes retain the native
-8192-host-sample analysis window and frequency resolution (5.859375 Hz per bin
-at 48 kHz). Source analysis stops at the host Nyquist; generated higher-frequency
+Oversampling scales the FFT and hop sizes with the processing rate. Studio uses
+16384/4096 at 2x and 32768/8192 at 4x; Real-time uses 8192/2048 at 2x and
+16384/4096 at 4x. The resamplers use one or two cascaded half-band FIR stages
+respectively. Each factor retains its selected bank's physical analysis window
+and frequency resolution. Source analysis stops at the host Nyquist; generated higher-frequency
 bins pass through the downsampling low-pass filter. Standard and High select
 different FIR filter designs at each factor. Original-phase percussion is
 preserved within the resampled path, whose filtering can change its samples
 relative to unfiltered input.
 
-Five paths are preallocated: native, 2x Standard, 2x High, 4x Standard, and 4x
-High. Only the active path processes audio in steady operation. During a change,
+Ten paths are preallocated in two resolution banks, each containing native,
+2x Standard, 2x High, 4x Standard, and 4x High. Only the active path processes audio
+in steady operation. During a change,
 the incoming path is restarted on its own frame grid and runs alongside the
-active one for the reported latency plus one analysis window before a 50 ms
-crossfade. This keeps the outgoing audio in place during priming and avoids
+active one for its target latency plus one analysis window. Within the same
+resolution, a 50 ms crossfade then switches the output. This keeps the outgoing
+audio in place during priming and avoids
 continually processing every inactive path. The frame grids use different
-offsets to distribute transform work during transitions. Mode and quality
-changes retain the same reported host latency.
+offsets to distribute transform work during transitions.
+
+Changing resolution uses a different handover because the old and new paths
+have different delays. After priming, the whole output fades out over 25 ms and
+holds at silence. A processor timer polled every 20 ms updates the host latency
+outside the audio callback; once acknowledged, processing commits to the new
+bank and fades in over 25 ms. Host/message-thread scheduling can extend the
+silent hold. Both dry delay lines remain warm, so the committed bank also selects
+its matching dry timeline. This resolution switch causes a brief interruption
+instead of mixing outputs with different latencies.
 
 Instantaneous frequency comes from unwrapped phase differences after removing
 the expected bin advance. Local spectral peaks own neighboring bins, and
@@ -282,7 +341,10 @@ The editor targets 60 Hz updates on a logarithmic 20 Hz–20 kHz grid spanning
 0 to −60 dB. It interpolates magnitude displays and paints rainbow cubic curves,
 up to 4096 data-driven particles, steel panels, and metallic rotary knobs with
 colored indicators. New analysis frames arrive at the host sample rate divided
-by 2048, rather than at the GUI timer rate. Actual frame pacing depends on the
+by 2048 in Studio or 1024 in Real-time, rather than at the GUI timer rate. The
+separate final-output analyzer keeps its 8192-point FFT and 2048-sample hop in
+both banks. Frames carry the active FFT size and valid bin count so displays and
+frequency inspection use the right grid after a resolution change. Actual frame pacing depends on the
 host and graphics environment. The display holds its latest spectrum targets
 between analysis frames; when callbacks stop, targets decay after the longer of
 250 ms or three analysis hops. Actual silent frames still release the display.
@@ -292,8 +354,9 @@ POST analyzer retains its fixed palette. This is visual feedback for sweetening
 strength. Processing Settings offers Reduced motion, which disables particle
 trails and transient flashes while retaining live spectrum and meter updates.
 Anti-aliased vector graphics render through an attached `juce::OpenGLContext`. JUCE component painting also
-provides the normal software path when no GL context is available. Every editable
-parameter is automatable and serialized through APVTS. Custom keyboard changes
+provides the normal software path when no GL context is available. Sound controls
+and oversampling/quality choices are automatable. All parameters, including the
+nonautomatable resolution preference, are serialized through APVTS. Custom keyboard changes
 use host gestures and copy the current preset before switching to Custom.
 The root, scale, factory, and processing settings dropdowns expose named choices to assistive clients
 as well as retaining normal popup and keyboard selection.
@@ -311,9 +374,11 @@ commercial listening quality.
 - `Source/SpectralProcessor.*`: centred HPSS, onset detection, pitch mapping,
   phase locking, and shared synthesis of processed/original-phase branches.
 - `Source/CepstralEnvelope.h`: fixed-storage cepstral projection and median helpers.
-- `Source/PluginProcessor.*`: buses, path selection/priming, latency, parameters, smoothing,
+- `Source/PluginProcessor.*`: buses, resolution/path selection, priming, latency
+  notifications, parameters, smoothing,
   factory program recall, and state.
-- `Source/ProcessingPaths.h`: fixed native/2x/4x processing and FIR resampling paths.
+- `Source/ProcessingPaths.h`: fixed native/2x/4x processing in both resolution banks
+  and FIR resampling paths.
 - `Source/FactoryPresets.h`: complete factory settings and parameter IDs.
 - `Source/SpectrumFifo.h`: bounded SPSC transport and calibrated FFT display gain.
 - `Source/OutputMonitor.h`: fixed-storage stereo post FFT and K-weighted loudness.

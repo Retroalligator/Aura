@@ -25,6 +25,7 @@ struct SpectrumFrame
     std::array<float, binCount> envelope {};
     float transientHit = 0.0f, percussiveLevel = 0.0f, formantCorrection = 0.0f;
     float sampleRate = 48000.0f;
+    int analysisFftSize = fftSize, validBins = binCount;
 };
 
 // One audio producer and one editor consumer. Drop new frames on overflow.

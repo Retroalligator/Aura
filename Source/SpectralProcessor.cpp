@@ -11,14 +11,14 @@ namespace
 constexpr auto twoPi = 2.0f * std::numbers::pi_v<float>;
 float wrap(float x) noexcept { return std::remainder(x, twoPi); }
 }
-template <int Order>
-SpectralEngine<Order>::SpectralEngine()
+template <int Order, int BaseOrder>
+SpectralEngine<Order, BaseOrder>::SpectralEngine()
 {
     for (int i = 0; i < fftSize; ++i)
         window[static_cast<std::size_t>(i)] = 0.5f - 0.5f * std::cos(twoPi * static_cast<float>(i) / fftSize);
 }
-template <int Order>
-void SpectralEngine<Order>::prepare(double rate, int frameOffset) noexcept
+template <int Order, int BaseOrder>
+void SpectralEngine<Order, BaseOrder>::prepare(double rate, int frameOffset) noexcept
 {
     sampleRate = rate > 0.0 ? rate : 48000.0;
     initialHopCounter = juce::jlimit(0, hopSize - 1, frameOffset);
@@ -28,8 +28,8 @@ void SpectralEngine<Order>::prepare(double rate, int frameOffset) noexcept
     slowRelease = static_cast<float>(1 - std::exp(-1 / (sampleRate * 0.03)));
     reset();
 }
-template <int Order>
-void SpectralEngine<Order>::reset() noexcept
+template <int Order, int BaseOrder>
+void SpectralEngine<Order, BaseOrder>::reset() noexcept
 {
     inputRing.fill(0); outputRing.fill(0); dryRing.fill(0);
     for (auto& frame : history) { frame.bins.fill({}); frame.magnitude.fill(0); frame.transient = frame.energy = 0; }
@@ -39,8 +39,8 @@ void SpectralEngine<Order>::reset() noexcept
     phaseReady = preservationReady = false; smoothedAmount = previousEnergy = 0;
     fastEnvelope = slowEnvelope = hopTransient = 0; transientWindow.fill(0); transientPosition = 0;
 }
-template <int Order>
-float SpectralEngine<Order>::processSample(float input, float& delayedDry,
+template <int Order, int BaseOrder>
+float SpectralEngine<Order, BaseOrder>::processSample(float input, float& delayedDry,
                                       const SpectralSettings& settings, SpectrumFifo* fifo) noexcept
 {
     const auto in = static_cast<std::size_t>(inputPosition);
@@ -66,8 +66,8 @@ float SpectralEngine<Order>::processSample(float input, float& delayedDry,
     }
     return std::isfinite(wet) ? wet : 0.0f;
 }
-template <int Order>
-void SpectralEngine<Order>::processFrame(const SpectralSettings& settings, SpectrumFifo* fifo) noexcept
+template <int Order, int BaseOrder>
+void SpectralEngine<Order, BaseOrder>::processFrame(const SpectralSettings& settings, SpectrumFifo* fifo) noexcept
 {
     for (int i = 0; i < fftSize; ++i)
         time[static_cast<std::size_t>(i)] = { inputRing[static_cast<std::size_t>((inputPosition + i) % fftSize)]
@@ -127,7 +127,8 @@ void SpectralEngine<Order>::processFrame(const SpectralSettings& settings, Spect
         {
             visualFrame.input.fill(0); visualFrame.output.fill(0); visualFrame.envelope.fill(0); visualFrame.targetHz.fill(0);
             visualFrame.transientHit = visualFrame.percussiveLevel = visualFrame.formantCorrection = 0;
-            visualFrame.sampleRate = static_cast<float>(sampleRate / (fftSize / aura::fftSize)); fifo->push(visualFrame);
+            visualFrame.analysisFftSize = 1 << BaseOrder; visualFrame.validBins = analysisBins;
+            visualFrame.sampleRate = static_cast<float>(sampleRate / (1 << (Order - BaseOrder))); fifo->push(visualFrame);
         }
         return;
     }
@@ -264,20 +265,21 @@ void SpectralEngine<Order>::processFrame(const SpectralSettings& settings, Spect
     {
         // Retain the host-rate frequency grid in the fixed display payload.
         // x4 uses four times the FFT/window/hop sizes for equal resolution.
-        visualFrame.sampleRate = static_cast<float>(sampleRate / (fftSize / aura::fftSize));
+        visualFrame.analysisFftSize = 1 << BaseOrder; visualFrame.validBins = analysisBins;
+        visualFrame.sampleRate = static_cast<float>(sampleRate / (1 << (Order - BaseOrder)));
         visualFrame.percussiveLevel = totalEnergy > 1.0e-12f ? std::sqrt(bypassEnergy / totalEnergy) : 0.0f;
         const auto onset = totalEnergy > 1.0e-12f ? juce::jlimit(0.0f, 1.0f, (totalEnergy - previousEnergy) / totalEnergy) : 0.0f;
         visualFrame.transientHit = std::max(onset, centre.transient) * visualFrame.percussiveLevel;
         visualFrame.formantCorrection = correctedEnergy > 1.0e-12f
             ? juce::jlimit(0.0f, 1.0f, std::sqrt(correctionEnergy / correctedEnergy) / std::log(4.0f)) : 0.0f;
-        for (int k = 0; k < aura::binCount; ++k)
+        for (int k = 0; k < analysisBins; ++k)
             visualFrame.output[static_cast<std::size_t>(k)] = std::sqrt(std::norm(shifted[static_cast<std::size_t>(k)])) * displayGain(k);
         fifo->push(visualFrame);
     }
     previousEnergy = totalEnergy;
 }
-template <int Order>
-void SpectralEngine<Order>::synthesise(const std::array<juce::dsp::Complex<float>, fftSize>& bins,
+template <int Order, int BaseOrder>
+void SpectralEngine<Order, BaseOrder>::synthesise(const std::array<juce::dsp::Complex<float>, fftSize>& bins,
                                  std::array<float, fftSize>& ring) noexcept
 {
     std::copy_n(bins.begin(), binCount, time.begin());
@@ -289,6 +291,9 @@ void SpectralEngine<Order>::synthesise(const std::array<juce::dsp::Complex<float
         ring[static_cast<std::size_t>((outputPosition + i) % fftSize)] += inverse[static_cast<std::size_t>(i)].real()
             * window[static_cast<std::size_t>(i)] * (2.0f / 3.0f);
 }
+template class SpectralEngine<fftOrder - 1, fftOrder - 1>;
+template class SpectralEngine<fftOrder, fftOrder - 1>;
+template class SpectralEngine<fftOrder + 1, fftOrder - 1>;
 template class SpectralEngine<fftOrder>;
 template class SpectralEngine<fftOrder + 1>;
 template class SpectralEngine<fftOrder + 2>;

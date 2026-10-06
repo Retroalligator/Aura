@@ -44,7 +44,7 @@ AURA — SPECTRAL HARMONY
 
 Free software under GNU AGPL version 3. See LICENSE and THIRD_PARTY_NOTICES.md.
 Project and complete corresponding source, including the pinned JUCE dependency:
-https://github.com/Retroalligator/Aura/releases/tag/v1.5.0
+https://github.com/Retroalligator/Aura/releases/tag/v1.6.0
 
 Drag Aura.vst3 to “Install VST3 Here” for VST3 hosts.
 Drag Aura.component to “Install AU Here” for Logic Pro and AU hosts.
@@ -73,11 +73,15 @@ Open Processing Settings with the gear or oversampling button. Choose 1x, 2x or
 4x, and Standard or High resampling filter quality. Standard uses shorter filters;
 High uses steeper filters with greater alias rejection. Filter quality applies
 at 2x and 4x. Reduced motion is also available in Processing Settings.
-The native STFT uses 8192 samples, 75% overlap and a Hann window. 2x uses a
-16384-point internal FFT and 4x uses 32768, at their multiplied sample rates,
-preserving the same analysis window and frequency resolution. A new path
-primes while audio runs, then fades in over 50 ms.
-Host latency is fixed at 16445 samples, including HPSS lookahead and filter delay.
+Studio uses an 8192-sample FFT; Real-time mode uses 4096 samples. Both retain
+75% overlap and a Hann window. Oversampling multiplies the internal FFT and
+sample rate together: Studio uses 8192/16384/32768, and Real-time uses
+4096/8192/16384 at 1x/2x/4x. Each mode keeps its own analysis window and
+frequency resolution. Oversampling changes prime then crossfade over 50 ms.
+Host latency is 16445 samples in Studio or 8253 samples in Real-time mode,
+including HPSS lookahead and FIR alignment. Resolution changes briefly fade
+out, notify the host off the audio thread, then fade back in. Oversampling
+and quality changes keep the selected resolution and latency.
 An empty custom scale preserves pitch; Mix at zero gives aligned original audio.
 INSTRUCTIONS
 cp "$ROOT/LICENSE" "$ROOT/THIRD_PARTY_NOTICES.md" "$STAGE/"
@@ -86,8 +90,8 @@ mkdir -p "$STAGE/.background"
 cp "$ROOT/Packaging/background.svg" "$STAGE/.background/background.svg"
 cp "$ROOT/Packaging/background.png" "$STAGE/.background/background.png"
 cp "$ROOT/Packaging/background.svg" "$STAGE/Aura — Installation Guide.svg"
-DMG="$DIST/Aura-1.5.0-Universal.dmg"
-TEMP_DMG="$DIST/.Aura-1.5.0-Universal.writable.dmg"
+DMG="$DIST/Aura-1.6.0-Universal.dmg"
+TEMP_DMG="$DIST/.Aura-1.6.0-Universal.writable.dmg"
 rm -f "$TEMP_DMG"
 hdiutil create -volname "Aura · Spectral Harmony" -srcfolder "$STAGE" -fs HFS+ -format UDRW "$TEMP_DMG"
 # Verify on the image filesystem as well as the staging filesystem.

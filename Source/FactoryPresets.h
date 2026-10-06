@@ -6,11 +6,11 @@
 
 namespace aura
 {
-inline constexpr std::array<const char*, 20> parameterIds {
+inline constexpr std::array<const char*, 21> parameterIds {
     "scaleMode", "customNoteBits", "freqLow", "freqHigh", "amount", "mix",
     "transientPreserve", "formantPreserve", "scaleTonic", "transientSensitivity",
     "transientBypass", "formantShift", "formantTension", "outputGain",
-    "outputMute", "soloWet", "globalBypass", "oversampling", "oversamplingMode", "processingQuality"
+    "outputMute", "soloWet", "globalBypass", "oversampling", "oversamplingMode", "processingQuality", "realTimeMode"
 };
 struct FactoryPreset { const char* name; std::array<float, parameterIds.size()> values; };
 constexpr FactoryPreset preset(const char* name, int scale, int root, float amount, float punch, float formants,
@@ -18,7 +18,7 @@ constexpr FactoryPreset preset(const char* name, int scale, int root, float amou
 {
     return { name, { static_cast<float>(scale), static_cast<float>(scaleMasks[static_cast<std::size_t>(scale)]),
         low, high, amount, 1, punch, formants, static_cast<float>(root), sensitivity,
-        0, shift, tension, gain, 0, 0, 0, x4 ? 1.0f : 0.0f, x4 ? 2.0f : 0.0f, 1.0f } };
+        0, shift, tension, gain, 0, 0, 0, x4 ? 1.0f : 0.0f, x4 ? 2.0f : 0.0f, 1.0f, 0.0f } };
 }
 inline constexpr std::array<FactoryPreset, 5> factoryPresets {
     preset("Default", 0, 0, 0.5f, 1, 1, 80, 12000, 0, 0.5f, 0.5f, 0, false),

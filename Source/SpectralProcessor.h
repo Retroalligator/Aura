@@ -16,11 +16,11 @@ struct SpectralSettings
     std::uint16_t mask = scaleMasks[0];
 };
 
-template <int Order> class SpectralEngine
+template <int Order, int BaseOrder = fftOrder> class SpectralEngine
 {
     static constexpr int fftSize = 1 << Order, hopSize = fftSize / 4, binCount = fftSize / 2 + 1;
     static constexpr int latencySamples = fftSize + hpssLookaheadFrames * hopSize;
-    static constexpr int analysisBins = std::min(binCount, aura::binCount);
+    static constexpr int analysisBins = std::min(binCount, (1 << BaseOrder) / 2 + 1);
     static constexpr float displayGain(int bin) noexcept { return (bin == 0 || bin == fftSize / 2 ? 2.0f : 4.0f) / fftSize; }
 public:
     SpectralEngine();
@@ -64,7 +64,7 @@ private:
 };
 
 // Own large FFT/history storage on the heap, constructed before callbacks.
-template <int Order> class BasicSpectralProcessor
+template <int Order, int BaseOrder = fftOrder> class BasicSpectralProcessor
 {
 public:
     void prepare(double rate, int frameOffset = 0) noexcept { engine->prepare(rate, frameOffset); }
@@ -72,7 +72,7 @@ public:
     float processSample(float input, float& dry, const SpectralSettings& settings, SpectrumFifo* fifo = nullptr) noexcept
     { return engine->processSample(input, dry, settings, fifo); }
 private:
-    std::unique_ptr<SpectralEngine<Order>> engine = std::make_unique<SpectralEngine<Order>>();
+    std::unique_ptr<SpectralEngine<Order, BaseOrder>> engine = std::make_unique<SpectralEngine<Order, BaseOrder>>();
 };
 using SpectralProcessor = BasicSpectralProcessor<fftOrder>;
 }

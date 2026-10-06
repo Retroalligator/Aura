@@ -15,9 +15,13 @@ public:
     }
     void update()
     {
-        const auto& frame = showPre ? visualizer.inputFrame() : visualizer.postFrame(); rate = frame.sampleRate;
+        const auto& frame = showPre ? visualizer.inputFrame() : visualizer.postFrame();
+        const auto size = juce::jmax(1, frame.analysisFftSize), bins = juce::jlimit(0, aura::binCount, frame.validBins);
+        if (std::abs(rate - frame.sampleRate) > 0.5f || analysisFftSize != size || validBins != bins) values.fill(0);
+        rate = frame.sampleRate; analysisFftSize = size; validBins = bins;
         const auto& source = showPre ? frame.input : frame.output;
-        for (std::size_t k = 0; k < values.size(); ++k) values[k] += (source[k] - values[k]) * (source[k] > values[k] ? 0.6f : 0.12f);
+        for (std::size_t k = 0; k < values.size(); ++k)
+        { const auto target = k < static_cast<std::size_t>(validBins) ? source[k] : 0.0f; values[k] += (target - values[k]) * (target > values[k] ? 0.6f : 0.12f); }
         repaint();
     }
     void resized() override { pre.setBounds(getWidth() - 111, 8, 45, 22); post.setBounds(getWidth() - 61, 8, 49, 22); }
@@ -33,8 +37,8 @@ public:
         for (auto hz : { 50.0f, 200.0f, 1000.0f, 5000.0f, 20000.0f })
         { const auto x = r.getX() + r.getWidth() * std::log(hz / 20) / std::log(1000.0f); g.setColour(aura::line); g.drawVerticalLine(juce::roundToInt(x), r.getY(), r.getBottom()); g.setColour(aura::muted); g.drawText(hz >= 1000 ? juce::String(hz / 1000, 0) + "k" : juce::String(hz, 0), juce::Rectangle<float>(x - 14, r.getBottom() + 3, 28, 14), juce::Justification::centred); }
         juce::Path path; bool first = true;
-        for (int k = 1; k < aura::binCount; ++k)
-        { const auto hz = static_cast<float>(k) * rate / aura::fftSize; if (hz < 20 || hz > 20000) continue; const auto x = r.getX() + r.getWidth() * std::log(hz / 20) / std::log(1000.0f); const auto db = juce::Decibels::gainToDecibels(values[static_cast<std::size_t>(k)], -60.0f); const auto y = r.getBottom() - r.getHeight() * juce::jlimit(0.0f, 1.0f, (db + 60) / 60); if (first) { path.startNewSubPath(x, y); first = false; } else path.lineTo(x, y); }
+        for (int k = 1; k < validBins; ++k)
+        { const auto hz = static_cast<float>(k) * rate / static_cast<float>(analysisFftSize); if (hz < 20 || hz > 20000 || hz > rate * 0.5f) continue; const auto x = r.getX() + r.getWidth() * std::log(hz / 20) / std::log(1000.0f); const auto db = juce::Decibels::gainToDecibels(values[static_cast<std::size_t>(k)], -60.0f); const auto y = r.getBottom() - r.getHeight() * juce::jlimit(0.0f, 1.0f, (db + 60) / 60); if (first) { path.startNewSubPath(x, y); first = false; } else path.lineTo(x, y); }
         juce::ColourGradient gradient(aura::accent, r.getX(), 0, aura::violet, r.getRight(), 0, false);
         auto glow = gradient; glow.multiplyOpacity(0.16f); g.setGradientFill(glow); g.strokePath(path, juce::PathStrokeType(5));
         g.setGradientFill(gradient); g.strokePath(path, juce::PathStrokeType(1.2f));
@@ -43,6 +47,7 @@ private:
     SpectralVisualizer& visualizer;
     juce::TextButton pre { "PRE" }, post { "POST" };
     bool showPre = false; float rate = 48000;
+    int analysisFftSize = aura::fftSize, validBins = aura::binCount;
     std::array<float, aura::binCount> values {};
 };
 class RackMeter final : public juce::Component
