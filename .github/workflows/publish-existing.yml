@@ -1,0 +1,100 @@
+name: Validate and publish existing build artifacts
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag
+        type: string
+        required: true
+      run_id:
+        description: Build-and-publish workflow run with successful builds and Windows installer checks
+        type: string
+        required: true
+permissions:
+  contents: read
+  actions: read
+env:
+  AURA_TAG: ${{ inputs.tag }}
+  AURA_BUILD_RUN: ${{ inputs.run_id }}
+jobs:
+  validate:
+    runs-on: macos-15-intel
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Verify artifact source and completed build checks
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          [[ "$AURA_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$AURA_BUILD_RUN" =~ ^[0-9]+$ ]]
+          expected="$(git rev-parse "$AURA_TAG^{commit}")"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$AURA_BUILD_RUN" | jq -e --arg sha "$expected" '.head_sha == $sha and .path == ".github/workflows/release.yml"'
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$AURA_BUILD_RUN/jobs?per_page=100" > jobs.json
+          jq -e '.jobs[] | select(.name == "windows") | .conclusion == "success"' jobs.json
+          jq -e '.jobs[] | select(.name == "macos") | .steps[] | select(.name == "Build, test and package Universal 2 AU and VST3") | .conclusion == "success"' jobs.json
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: Aura-release-macOS
+          path: payload
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ github.token }}
+      - name: Validate exact packaged AU after registration refresh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-evidence
+          cp jobs.json release-evidence/build-jobs.json
+          gh run view "$AURA_BUILD_RUN" --repo "$GITHUB_REPOSITORY" --log > release-evidence/original-build.txt
+          (cd payload/dist && shasum -a 256 -c Aura-*-Universal.dmg.sha256)
+          mount="$RUNNER_TEMP/aura-image"
+          mkdir -p "$mount"
+          hdiutil attach payload/dist/Aura-*-Universal.dmg -readonly -nobrowse -mountpoint "$mount"
+          trap 'hdiutil detach "$mount"' EXIT
+          for bundle in Aura.component Aura.vst3; do
+            codesign --verify --deep --strict "$mount/$bundle"
+            lipo "$mount/$bundle/Contents/MacOS/Aura" -verify_arch arm64 x86_64
+          done
+          sudo mkdir -p /Library/Audio/Plug-Ins/Components
+          sudo ditto --norsrc --noextattr "$mount/Aura.component" /Library/Audio/Plug-Ins/Components/Aura.component
+          codesign --verify --deep --strict /Library/Audio/Plug-Ins/Components/Aura.component
+          sudo killall -9 AudioComponentRegistrar || true
+          sleep 2
+          auval -a > release-evidence/registered-audio-units.txt 2>&1
+          auval -v aufx Aura AS01 > release-evidence/auval-macos-intel.txt 2>&1
+          cat release-evidence/auval-macos-intel.txt
+          grep -q 'AU VALIDATION SUCCEEDED' release-evidence/auval-macos-intel.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: Aura-recovery-validation
+          path: release-evidence/*
+  publish:
+    needs: validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          pattern: Aura-release-*
+          path: payloads
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: Aura-recovery-validation
+          path: recovery-evidence
+      - name: Publish verified binaries, source and checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./Packaging/publish_existing.sh

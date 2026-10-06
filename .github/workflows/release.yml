@@ -28,13 +28,17 @@ jobs:
       - name: Validate packaged Audio Unit
         run: |
           set -euo pipefail
-          mkdir -p release-evidence "$HOME/Library/Audio/Plug-Ins/Components"
+          mkdir -p release-evidence
+          sudo mkdir -p /Library/Audio/Plug-Ins/Components
           mount="$RUNNER_TEMP/aura-image"
           mkdir -p "$mount"
           hdiutil attach dist/Aura-*-Universal.dmg -readonly -nobrowse -mountpoint "$mount"
           trap 'hdiutil detach "$mount"' EXIT
-          ditto --norsrc --noextattr "$mount/Aura.component" "$HOME/Library/Audio/Plug-Ins/Components/Aura.component"
-          codesign --verify --deep --strict "$HOME/Library/Audio/Plug-Ins/Components/Aura.component"
+          sudo ditto --norsrc --noextattr "$mount/Aura.component" /Library/Audio/Plug-Ins/Components/Aura.component
+          codesign --verify --deep --strict /Library/Audio/Plug-Ins/Components/Aura.component
+          sudo killall -9 AudioComponentRegistrar || true
+          sleep 2
+          auval -a > release-evidence/registered-audio-units.txt 2>&1
           auval -v aufx Aura AS01 > release-evidence/auval-macos-intel.txt 2>&1
           cat release-evidence/auval-macos-intel.txt
           cp build-release/Testing/Temporary/LastTest.log release-evidence/ctest-macos-intel.txt
