@@ -1,5 +1,162 @@
 # Aura 2.0
 
+## Install Aura — start here
+
+Download from the [official Aura 2.0 release](https://github.com/Retroalligator/Aura/releases/tag/v2.0.0).
+Close your DAW before installing or replacing the plug-in.
+When updating, replace Aura in its existing location and keep only one copy of
+each plug-in format installed.
+
+| Your computer | Download | Includes |
+|---|---|---|
+| macOS 11+ · Apple Silicon or Intel | [Aura-2.0.0-Universal.dmg](https://github.com/Retroalligator/Aura/releases/download/v2.0.0/Aura-2.0.0-Universal.dmg) | AU for Logic Pro and AU hosts; VST3 for VST3 hosts |
+| Windows 10/11 · x64 | [Aura-2.0.0-Windows-x64-Setup.exe](https://github.com/Retroalligator/Aura/releases/download/v2.0.0/Aura-2.0.0-Windows-x64-Setup.exe) | VST3 plug-in and optional standalone app |
+
+**Security prompts:** Windows builds are unsigned. macOS builds have an ad-hoc
+signature, but no Apple Developer ID or notarization, so macOS cannot verify the
+publisher. Approve only the Aura files downloaded from this repository. Use the
+[checksum check below](#verify-your-download) before making a security exception.
+
+### macOS installation
+
+1. Open the downloaded DMG. If macOS blocks it, follow **macOS security approval** below, then open it again.
+2. In Finder, press **Command + Shift + G** and open `~/Library/Audio/Plug-Ins/`.
+   Create the `Components` and `VST3` folders there if needed. If the parent folder
+   is missing, create it in `~/Library/Audio/` first.
+3. Copy the **whole bundles** from the DMG into these folders:
+
+   | Bundle | Destination for your user account |
+   |---|---|
+   | `Aura.component` | `~/Library/Audio/Plug-Ins/Components/` |
+   | `Aura.vst3` | `~/Library/Audio/Plug-Ins/VST3/` |
+
+   Logic Pro needs the AU (`Aura.component`). Install VST3 if your DAW uses VST3.
+   For installation for all users instead, drag each bundle onto the matching
+   **Install AU Here** / **Install VST3 Here** shortcut in the DMG; macOS may ask
+   for an administrator password. Those shortcuts use `/Library/Audio/Plug-Ins/`.
+4. Eject the DMG, reopen your DAW, and rescan plug-ins. Load **Aura** as an audio
+   effect under **AudioStudio**. In Logic Pro, use an **Audio FX** slot →
+   **Audio Units → AudioStudio → Aura**.
+
+#### macOS security approval
+
+If macOS says the developer cannot be verified or Apple cannot check Aura for
+malicious software, dismiss the warning, open **System Settings → Privacy &
+Security**, and look for the blocked Aura download or plug-in. Choose **Open
+Anyway**, authenticate if requested, then confirm **Open**. Retry opening the
+DMG or scanning Aura. On older macOS versions, this panel is named **System
+Preferences → Security & Privacy**.
+[Apple's security approval instructions](https://support.apple.com/en-us/102445).
+
+**If the installed plug-in is still blocked during scanning and there is no
+Open Anyway option:** quit your DAW and open Terminal. After verifying the
+download, run only the line for each format you installed. These commands remove
+the downloaded-file quarantine flag from the named Aura bundle only:
+
+```sh
+xattr -dr com.apple.quarantine "$HOME/Library/Audio/Plug-Ins/Components/Aura.component"
+xattr -dr com.apple.quarantine "$HOME/Library/Audio/Plug-Ins/VST3/Aura.vst3"
+```
+
+If you used the DMG's **all-users shortcuts**, use these paths instead:
+
+```sh
+sudo xattr -dr com.apple.quarantine "/Library/Audio/Plug-Ins/Components/Aura.component"
+sudo xattr -dr com.apple.quarantine "/Library/Audio/Plug-Ins/VST3/Aura.vst3"
+```
+
+The `sudo` commands may request your Mac password; Terminal does not display
+characters as you type it. A missing-path message means Aura is not installed
+at that location. Reopen the DAW and rescan afterward. Keep Gatekeeper and SIP
+enabled; do not run quarantine-removal commands against Downloads, your whole
+plug-in folder, or your DAW.
+
+In Logic Pro, open **Logic Pro → Settings (or Preferences) → Plug-in Manager**,
+select **Aura**, then choose **Reset & Rescan Selection**. Restart your Mac if a
+new AU still does not appear.
+[Apple's plug-in rescan guide](https://support.apple.com/en-us/122179).
+
+### Windows installation
+
+1. Run **Aura-2.0.0-Windows-x64-Setup.exe**. If **Windows protected your PC**
+   appears for this verified Aura download, select **More info → Run anyway**.
+   **Unknown publisher** is expected for this unsigned build.
+   [Microsoft's SmartScreen guidance](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/publish-first-app#step-6-handle-smartscreen-for-new-apps).
+2. Approve the Windows administrator prompt for the Aura installer. Keep the
+   **VST3 plug-in** selected; the **Standalone application** is optional.
+   Finish the installer. Default locations are:
+
+   | Component | Default destination |
+   |---|---|
+   | VST3 | `C:\Program Files\Common Files\VST3\Aura.vst3` |
+   | Optional standalone app | `C:\Program Files\Aura\Aura.exe` |
+
+3. Reopen your DAW and rescan its VST3 plug-ins. Load **Aura / AudioStudio** on
+   an audio-effect insert. Windows has no AU version. The standalone app needs
+   an audio input and output device; the separate downloadable
+   `Aura-2.0.0-Windows-x64.exe` is the app, **not the installer**.
+
+**File-specific unblock:** if Windows marks the downloaded Setup EXE or portable
+ZIP as blocked, right-click that file → **Properties → General → Unblock →
+Apply**, if offered. For a ZIP, do this **before** using **Extract All**.
+[Microsoft's file-unblocking documentation](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/unblock-file).
+
+**Portable VST3:** download the
+[Windows ZIP](https://github.com/Retroalligator/Aura/releases/download/v2.0.0/Aura-2.0.0-Windows-x64.zip),
+extract it, and copy the entire `Aura.vst3` directory to
+`C:\Program Files\Common Files\VST3\` (administrator permission may be required).
+Then rescan your DAW. Do not copy just the file inside the bundle.
+
+<details>
+<summary>Windows 11: Smart App Control blocks Aura, or Run anyway is missing</summary>
+
+Smart App Control is separate from SmartScreen and has **no per-app exception**.
+If it specifically blocks the verified unsigned Aura build on your personal PC,
+the system-wide opt-out is **Windows Security → App & browser control → Smart
+App Control settings → Off**. This removes Smart App Control protection for
+**all apps**, not just Aura; it is not required for a normal SmartScreen prompt.
+Keep Microsoft Defender Antivirus enabled. Re-enabling Smart App Control
+depends on your installed Windows version; consult
+[Microsoft's current FAQ](https://support.microsoft.com/en-us/windows/security/threat-malware-protection/smart-app-control-frequently-asked-questions)
+before changing it.
+
+If a work/school administrator or application-control policy blocks installation,
+contact the administrator for an approved installation. A SmartScreen prompt
+with no **Run anyway** option does not always mean Smart App Control is the cause.
+Unblocking a file does not override these policies.
+
+</details>
+
+### Verify your download
+
+Download [SHA256SUMS.txt](https://github.com/Retroalligator/Aura/releases/download/v2.0.0/SHA256SUMS.txt)
+from the same release. Calculate the hash of your downloaded file:
+
+macOS Terminal:
+
+```sh
+shasum -a 256 "$HOME/Downloads/Aura-2.0.0-Universal.dmg"
+```
+
+Windows PowerShell:
+
+```powershell
+Get-FileHash "$HOME\Downloads\Aura-2.0.0-Windows-x64-Setup.exe" -Algorithm SHA256
+```
+
+Compare the result with the entry for that exact filename in `SHA256SUMS.txt`
+(uppercase/lowercase hex letters are equivalent). If it differs, download again
+and do not approve or run that copy. If your antivirus reports detected malware,
+or macOS reports damage, stop and report the exact message through
+[GitHub Issues](https://github.com/Retroalligator/Aura/issues); these instructions
+are for unsigned-publisher/download prompts, not malware detections.
+
+To uninstall, remove the Aura bundles you copied on macOS, or use
+**Settings → Apps → Installed apps → Aura → Uninstall** on Windows. For a portable
+installation, remove its copied Aura files.
+
+## About Aura
+
 Aura is an open-source spectral sweetening and harmonic snapping effect built
 with C++20 and JUCE 8.0.15. It runs as Universal 2 AU/VST3 on macOS and x64
 VST3/standalone on Windows, under the AGPL-3.0-only license.
