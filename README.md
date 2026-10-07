@@ -152,8 +152,9 @@ or macOS reports damage, stop and report the exact message through
 are for unsigned-publisher/download prompts, not malware detections.
 
 To uninstall, remove the Aura bundles you copied on macOS, or use
-**Settings → Apps → Installed apps → Aura → Uninstall** on Windows. For a portable
-installation, remove its copied Aura files.
+**Settings → Apps → Installed apps** (**Apps & features** on Windows 10), select
+**Aura**, and choose **Uninstall**. For a portable installation, remove its copied
+Aura files.
 
 ## About Aura
 
